@@ -5,7 +5,7 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Next.js plugin for Netlify
+# Next.js plugin for Netlify - handles all routing automatically
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
@@ -16,10 +16,3 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-# Redirect all routes to Next.js
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/___netlify-handler"
-  status = 200
-  conditions = {Role = ["admin"]}

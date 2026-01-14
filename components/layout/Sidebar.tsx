@@ -9,9 +9,7 @@ import {
     LayoutDashboard,
     LogOut,
     MessageSquare,
-    Settings,
     Sparkles,
-    TrendingUp,
     Users
 } from 'lucide-react';
 import Link from 'next/link';
