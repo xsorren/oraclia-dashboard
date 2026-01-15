@@ -11,11 +11,11 @@ import { formatDate } from '@/lib/utils/dates';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertCircle,
+    Archive,
     CheckCircle2,
     Clock,
     Eye,
     Search,
-    Trash2,
     User,
     XCircle
 } from 'lucide-react';
@@ -49,11 +49,11 @@ export default function ConsultasPage() {
     mutationFn: (id: string) => adminApi.deleteFlashQuestion({ questionId: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
-      toast('Pregunta eliminada correctamente', 'success');
+      toast('Pregunta archivada correctamente', 'success');
       setQuestionToDelete(null);
     },
     onError: (error) => {
-      toast('Error al eliminar: ' + error.message, 'error');
+      toast('Error al archivar: ' + error.message, 'error');
       setQuestionToDelete(null);
     }
   });
@@ -172,10 +172,10 @@ export default function ConsultasPage() {
                                     <td className="px-6 py-4">
                                         <button 
                                             onClick={() => setQuestionToDelete(question.id)}
-                                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
-                                            title="Eliminar pregunta"
+                                            className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition"
+                                            title="Archivar pregunta"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Archive className="w-4 h-4" />
                                         </button>
                                     </td>
                                 </ResponsiveTableRow>
@@ -216,8 +216,8 @@ export default function ConsultasPage() {
         isOpen={!!questionToDelete}
         onClose={() => setQuestionToDelete(null)}
         onConfirm={handleDelete}
-        title="Eliminar Consulta"
-        message="¿Estás seguro de eliminar esta pregunta? Esta acción no se puede deshacer y borrará permanentemente la pregunta y su respuesta si existe."
+        title="Archivar Consulta"
+        message="¿Estás seguro de archivar esta pregunta? La pregunta dejará de aparecer en el feed de la app, pero los datos se conservarán en la base de datos."
         isDestructive
         isLoading={deleteMutation.isPending}
       />

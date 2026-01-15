@@ -10,19 +10,19 @@ import { getServiceName } from '@/lib/utils/services';
 import type { Currency } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle,
-  ArrowLeft,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  CreditCard,
-  DollarSign,
-  Mail,
-  MapPin,
-  MessageSquare,
-  Phone,
-  TrendingUp,
-  Wallet
+    AlertCircle,
+    ArrowLeft,
+    Calendar,
+    CheckCircle2,
+    Clock,
+    CreditCard,
+    DollarSign,
+    Mail,
+    MapPin,
+    MessageSquare,
+    Phone,
+    TrendingUp,
+    Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
