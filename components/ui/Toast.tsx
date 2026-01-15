@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, X } from 'lucide-react';
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -28,20 +28,22 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const counterRef = useRef(0);
 
-  const toast = (message: string, type: ToastType = 'info') => {
-    const id = Math.random().toString(36).substr(2, 9);
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const toast = useCallback((message: string, type: ToastType = 'info') => {
+    counterRef.current += 1;
+    const id = `toast-${counterRef.current}-${Date.now()}`;
     setToasts((prev) => [...prev, { id, message, type }]);
     
     // Auto dismiss after 3 seconds
     setTimeout(() => {
       removeToast(id);
     }, 3000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, [removeToast]);
 
   return (
     <ToastContext.Provider value={{ toast, removeToast }}>

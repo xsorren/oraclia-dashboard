@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  NEXT_PRIVATE_FORCE_WEBPACK = "true"
 
 # Next.js plugin for Netlify - handles all routing automatically
 [[plugins]]
