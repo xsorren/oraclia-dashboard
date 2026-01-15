@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, breadcrumbs }: HeaderProps) {
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-slate-900/30 backdrop-blur-xl border-b border-slate-800">
+    <div className="pl-14 md:pl-4 pr-4 sm:px-6 lg:px-8 py-4 sm:py-6 bg-slate-900/30 backdrop-blur-xl border-b border-slate-800">
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-2 mb-3 text-sm">
