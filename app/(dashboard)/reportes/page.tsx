@@ -2,7 +2,7 @@
 
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
@@ -183,7 +183,77 @@ export default function ReportesPage() {
                         description={statusFilter !== 'all' ? 'No hay reportes con este estado.' : 'Todo está en orden.'}
                     />
                 ) : (
-                    <ResponsiveTable headers={['Reportante', 'Reportado', 'Msj', 'Estado', 'Fecha', 'Acciones']}>
+                    <>
+                        {/* Mobile Cards */}
+                        <MobileCardList>
+                            {reports.map((report) => {
+                                const StatusIcon = statusConfig[report.status].icon;
+                                return (
+                                    <MobileCard key={report.id}>
+                                        <MobileCardHeader>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-white truncate">
+                                                    {report.reporter_name}
+                                                </p>
+                                                <p className="text-xs text-slate-400">
+                                                    reportó a <span className="text-purple-400">{report.reported_name}</span>
+                                                </p>
+                                            </div>
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${statusConfig[report.status].color}`}>
+                                                <StatusIcon className="w-3 h-3" />
+                                                {statusConfig[report.status].label}
+                                            </span>
+                                        </MobileCardHeader>
+                                        
+                                        <div className="bg-slate-800/50 rounded-lg p-3">
+                                            <p className="text-sm text-slate-300 line-clamp-3">
+                                                {report.reason || 'Sin mensaje'}
+                                            </p>
+                                        </div>
+                                        
+                                        <MobileCardField 
+                                            label="Fecha" 
+                                            value={formatDate(report.created_at)} 
+                                        />
+                                        
+                                        <MobileCardActions>
+                                            <button
+                                                onClick={() => setViewReport(report)}
+                                                className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-purple-400 hover:bg-purple-500/10 rounded-lg transition"
+                                            >
+                                                <MessageSquare className="w-4 h-4" />
+                                                Ver
+                                            </button>
+                                            {report.reporter_email && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEmailReport(report);
+                                                        setEmailSubject(`Re: Tu reporte en Oraclia - ${report.reported_name}`);
+                                                        setEmailBody(`Hola ${report.reporter_name},\n\nGracias por contactarnos respecto a tu reporte sobre ${report.reported_name}.\n\n[Tu mensaje aquí]\n\nSaludos,\nEquipo Oraclia`);
+                                                    }}
+                                                    className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+                                                >
+                                                    <Mail className="w-4 h-4" />
+                                                    Email
+                                                </button>
+                                            )}
+                                            {report.status !== 'resolved' && (
+                                                <button
+                                                    onClick={() => handleStatusChangeInit(report.id, 'resolved')}
+                                                    className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-green-400 hover:bg-green-500/10 rounded-lg transition"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    Resolver
+                                                </button>
+                                            )}
+                                        </MobileCardActions>
+                                    </MobileCard>
+                                );
+                            })}
+                        </MobileCardList>
+
+                        {/* Desktop Table */}
+                        <ResponsiveTable headers={['Reportante', 'Reportado', 'Msj', 'Estado', 'Fecha', 'Acciones']}>
                         {reports.map((report) => {
                              const StatusIcon = statusConfig[report.status].icon;
                              return (
@@ -282,6 +352,7 @@ export default function ReportesPage() {
                              );
                         })}
                     </ResponsiveTable>
+                    </>
                 )}
 
                 {/* Pagination */}

@@ -1,7 +1,7 @@
 'use client';
 
 import { EmptyState } from '@/components/common/EmptyState';
-import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useTarotistas } from '@/lib/hooks/useTarotistas';
@@ -189,7 +189,75 @@ export default function TarotistasPage() {
                             : 'No hay tarotistas registrados en el sistema'}
                     />
                 ) : (
-                    <ResponsiveTable headers={['Tarotista', 'Estado', 'Plataforma', 'País', 'Rating', 'Pago Pendiente', 'Fecha Registro', 'Acciones']}>
+                    <>
+                        {/* Mobile Cards */}
+                        <MobileCardList>
+                            {filteredData.map((tarotista) => (
+                                <MobileCard key={tarotista.id}>
+                                    <MobileCardHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                                                {tarotista.display_name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-white truncate">
+                                                    {tarotista.display_name}
+                                                </p>
+                                                <p className="text-xs text-slate-400">
+                                                    ID: {tarotista.id.slice(0, 8)}...
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {tarotista.is_active ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20 shrink-0">
+                                                <UserCheck className="w-3 h-3" />
+                                                Activo
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20 shrink-0">
+                                                <UserX className="w-3 h-3" />
+                                                Inactivo
+                                            </span>
+                                        )}
+                                    </MobileCardHeader>
+                                    
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <MobileCardField 
+                                            label="Plataforma" 
+                                            value={getPlatformBadge(tarotista.preferred_currency)} 
+                                        />
+                                        <MobileCardField 
+                                            label="País" 
+                                            value={tarotista.country || '-'} 
+                                        />
+                                        <MobileCardField 
+                                            label="Rating" 
+                                            value={tarotista.avg_rating ? `⭐ ${tarotista.avg_rating.toFixed(1)}` : '-'} 
+                                        />
+                                        <MobileCardField 
+                                            label="Pendiente" 
+                                            value={
+                                                tarotista.pending_payout > 0 
+                                                    ? <span className="text-orange-400">{formatCurrency(tarotista.pending_payout, tarotista.preferred_currency)}</span>
+                                                    : '-'
+                                            } 
+                                        />
+                                    </div>
+                                    
+                                    <MobileCardActions>
+                                        <Link
+                                            href={`/tarotistas/${tarotista.id}`}
+                                            className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
+                                        >
+                                            Ver detalle
+                                        </Link>
+                                    </MobileCardActions>
+                                </MobileCard>
+                            ))}
+                        </MobileCardList>
+
+                        {/* Desktop Table */}
+                        <ResponsiveTable headers={['Tarotista', 'Estado', 'Plataforma', 'País', 'Rating', 'Pago Pendiente', 'Fecha Registro', 'Acciones']}>
                         {filteredData.map((tarotista) => (
                             <ResponsiveTableRow key={tarotista.id}>
                                 <td className="px-6 py-4">
@@ -256,6 +324,7 @@ export default function TarotistasPage() {
                             </ResponsiveTableRow>
                         ))}
                     </ResponsiveTable>
+                    </>
                 )}
 
                 {/* Pagination */}

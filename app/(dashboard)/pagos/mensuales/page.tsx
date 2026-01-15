@@ -2,7 +2,7 @@
 
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
@@ -562,7 +562,98 @@ export default function PagosMensualesPage() {
                   : 'No se registraron consultas completadas en este período'}
               />
             ) : (
-              <ResponsiveTable headers={['Tarotista', 'Plataforma', 'Consultas', 'Monto', 'Estado', 'Acciones']}>
+              <>
+                {/* Mobile Cards */}
+                <MobileCardList>
+                  {data.data.map((payout: MonthlyPayoutData) => (
+                    <MobileCard key={payout.reader_id}>
+                      <MobileCardHeader>
+                        <div className="flex items-center gap-3 min-w-0">
+                          {payout.avatar_url ? (
+                            <img 
+                              src={payout.avatar_url} 
+                              alt={payout.display_name}
+                              className="w-10 h-10 rounded-full object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                              {payout.display_name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <Link
+                              href={`/tarotistas/${payout.reader_id}`}
+                              className="text-sm font-medium text-purple-400 hover:text-purple-300 truncate block"
+                            >
+                              {payout.display_name}
+                            </Link>
+                            <p className="text-xs text-slate-500">
+                              {payout.sessions_count} consulta{payout.sessions_count !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        {getStatusBadge(payout.payout_status)}
+                      </MobileCardHeader>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <MobileCardField 
+                          label="Plataforma" 
+                          value={getPlatformBadge(payout.currency)} 
+                        />
+                        <MobileCardField 
+                          label="Monto" 
+                          value={<span className="text-lg font-semibold">{formatCurrency(payout.amount, payout.currency)}</span>} 
+                        />
+                      </div>
+                      
+                      <MobileCardActions>
+                        {!payout.payout_status ? (
+                          <button
+                            onClick={() => handleProcessPayout(payout)}
+                            disabled={processPayoutMutation.isPending}
+                            className="flex-1 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                          >
+                            Procesar Pago
+                          </button>
+                        ) : (
+                          <>
+                            {payout.payout_status === 'pending' && (
+                              <button
+                                onClick={() => handleUpdateStatus(payout.payout_id!, 'completed')}
+                                className="flex-1 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-lg text-sm transition"
+                              >
+                                <CheckCircle2 className="w-4 h-4 inline mr-1" />
+                                Completar
+                              </button>
+                            )}
+                            {payout.receipt_url && (
+                              <button
+                                onClick={() => setViewReceiptUrl(payout.receipt_url)}
+                                className="flex-1 px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-lg text-sm transition"
+                              >
+                                <Eye className="w-4 h-4 inline mr-1" />
+                                Ver
+                              </button>
+                            )}
+                            {payout.payout_id && (
+                              <button
+                                onClick={() => handleUploadReceipt(payout.payout_id!)}
+                                disabled={uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id}
+                                className="flex-1 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-sm transition disabled:opacity-50"
+                              >
+                                <Upload className={`w-4 h-4 inline mr-1 ${uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id ? 'animate-pulse' : ''}`} />
+                                Subir
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </MobileCardActions>
+                    </MobileCard>
+                  ))}
+                </MobileCardList>
+
+                {/* Desktop Table */}
+                <ResponsiveTable headers={['Tarotista', 'Plataforma', 'Consultas', 'Monto', 'Estado', 'Acciones']}>
                 {data.data.map((payout: MonthlyPayoutData) => (
                   <ResponsiveTableRow key={payout.reader_id}>
                     <td className="px-6 py-4">
@@ -673,6 +764,7 @@ export default function PagosMensualesPage() {
                   </ResponsiveTableRow>
                 ))}
               </ResponsiveTable>
+              </>
             )}
           </div>
         )}
