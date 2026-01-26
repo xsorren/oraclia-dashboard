@@ -1,5 +1,6 @@
 'use client';
 
+import { ALLOWED_ADMIN_EMAIL } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { Profile } from '@/types/database';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
@@ -39,16 +40,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Verify admin role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single() as { data: Profile | null; error: any };
-
-      if (profileError || !profile || profile.role !== 'admin') {
+      // Verify allowlist
+      if (data.user.email !== ALLOWED_ADMIN_EMAIL) {
         await supabase.auth.signOut();
-        setError('No tienes permisos de administrador');
+        setError('Este email no está autorizado para acceder al panel.');
         setIsLoading(false);
         return;
       }

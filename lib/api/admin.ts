@@ -700,6 +700,10 @@ export const adminApi = {
       }
     );
 
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Error al archivar pregunta');
+    }
   },
 
   async getConfiguration(): Promise<ConfigurationData> {

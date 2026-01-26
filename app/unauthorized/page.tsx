@@ -10,7 +10,8 @@ export default function UnauthorizedPage() {
         </div>
         <h1 className="text-4xl font-bold text-white mb-4">Acceso Denegado</h1>
         <p className="text-slate-400 mb-8 max-w-md mx-auto">
-          No tienes permisos de administrador para acceder a este panel.
+          Tu cuenta no está autorizada para acceder a este panel de administración.
+          Por favor contacta a soporte si crees que es un error.
         </p>
         <Link
           href="/login"
