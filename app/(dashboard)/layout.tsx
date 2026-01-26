@@ -1,6 +1,6 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ALLOWED_ADMIN_EMAIL } from '@/lib/constants';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Profile } from '@/types/database';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardRootLayout({
@@ -18,14 +18,8 @@ export default async function DashboardRootLayout({
     redirect('/login');
   }
 
-  // Verify admin role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, display_name')
-    .eq('id', session.user.id)
-    .single() as { data: Profile | null };
-
-  if (!profile || profile.role !== 'admin') {
+  // Verify allowlist
+  if (session.user.email !== ALLOWED_ADMIN_EMAIL) {
     redirect('/unauthorized');
   }
 
