@@ -8,9 +8,10 @@ import {
     DollarSign,
     LayoutDashboard,
     LogOut,
-    MessageSquare,
+    MessageCircle,
     Sparkles,
-    Users
+    Users,
+    Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,7 +22,8 @@ const navigation = [
   { name: 'Pagos', href: '/pagos', icon: DollarSign },
   // { name: 'Finanzas', href: '/finanzas', icon: TrendingUp }, // Hidden for now
   { name: 'Reportes', href: '/reportes', icon: AlertTriangle, showBadge: true },
-  { name: 'Consultas', href: '/consultas', icon: MessageSquare },
+  { name: 'Flash', href: '/consultas', icon: Zap },
+  { name: 'Privadas', href: '/consultas/privadas', icon: MessageCircle },
   // { name: 'Configuración', href: '/configuracion', icon: Settings }, // Hidden for now
 ];
 

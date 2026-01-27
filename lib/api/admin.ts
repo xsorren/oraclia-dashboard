@@ -829,4 +829,70 @@ export const adminApi = {
 
     return await response.json();
   },
+
+  async getPrivateConsultations(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    serviceKind?: string;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    const token = await getAuthToken();
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page.toString());
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+    if (params.search) searchParams.append('search', params.search);
+    if (params.status) searchParams.append('status', params.status);
+    if (params.serviceKind) searchParams.append('service_kind', params.serviceKind);
+
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/private-consultations?${searchParams.toString()}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Error al obtener consultas privadas');
+    }
+
+    return await response.json();
+  },
+
+  async getConsultationDetail(consultationId: string): Promise<{
+    data: {
+      session: any;
+      messages: any[];
+    };
+  }> {
+    const token = await getAuthToken();
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/consultation/${consultationId}/details`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Error al obtener detalle de consulta');
+    }
+
+    return await response.json();
+  },
 };
