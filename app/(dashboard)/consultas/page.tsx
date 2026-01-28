@@ -2,12 +2,12 @@
 
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardActions, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
 import { adminApi } from '@/lib/api/admin';
-import { formatDate } from '@/lib/utils/dates';
+import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertCircle,
@@ -15,6 +15,7 @@ import {
     CheckCircle2,
     Clock,
     Eye,
+    MessageSquare,
     Search,
     User,
     XCircle
@@ -117,7 +118,74 @@ export default function ConsultasPage() {
                         description="Intenta ajustar los filtros o la búsqueda para encontrar lo que necesitas."
                     />
                 ) : (
-                    <ResponsiveTable headers={['Usuario', 'Pregunta', 'Estado', 'Respuesta', 'Fecha', 'Acciones']}>
+                    <>
+                        {/* Mobile Cards */}
+                        <MobileCardList>
+                            {data.data.map((question: any) => {
+                                const statusInfo = statusConfig[question.status] || statusConfig.unknown;
+                                const StatusIcon = statusInfo.icon;
+                                
+                                return (
+                                    <MobileCard key={question.id}>
+                                        <MobileCardHeader>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                    {question.user?.avatar_url ? (
+                                                        <img src={question.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <User className="w-5 h-5 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-sm font-medium text-white truncate">
+                                                        {question.user?.display_name || 'Desconocido'}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        {formatRelativeTime(question.created_at)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${statusInfo.color}`}>
+                                                <StatusIcon className="w-3 h-3" />
+                                                <span className="hidden xs:inline">{statusInfo.label}</span>
+                                            </div>
+                                        </MobileCardHeader>
+                                        
+                                        <div className="bg-slate-900/50 rounded-lg p-3 -mx-1">
+                                            <div className="flex items-start gap-2">
+                                                <MessageSquare className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-sm text-slate-300 line-clamp-3">
+                                                    {question.content}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {question.answer && (
+                                            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3 -mx-1">
+                                                <div className="flex items-center gap-2 text-green-500 text-xs font-medium mb-1">
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    Respondida por {question.answer.reader_name}
+                                                </div>
+                                                <p className="text-sm text-slate-400 line-clamp-2">{question.answer.body_text}</p>
+                                            </div>
+                                        )}
+
+                                        <MobileCardActions>
+                                            <button 
+                                                onClick={() => setQuestionToDelete(question.id)}
+                                                className="flex-1 flex items-center justify-center gap-2 py-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition text-sm"
+                                            >
+                                                <Archive className="w-4 h-4" />
+                                                Archivar
+                                            </button>
+                                        </MobileCardActions>
+                                    </MobileCard>
+                                );
+                            })}
+                        </MobileCardList>
+
+                        {/* Desktop Table */}
+                        <ResponsiveTable headers={['Usuario', 'Pregunta', 'Estado', 'Respuesta', 'Fecha', 'Acciones']}>
                         {data.data.map((question: any) => {
                             const statusInfo = statusConfig[question.status] || statusConfig.unknown;
                             const StatusIcon = statusInfo.icon;
@@ -182,6 +250,7 @@ export default function ConsultasPage() {
                             );
                         })}
                     </ResponsiveTable>
+                    </>
                 )}
 
                 {/* Pagination */}

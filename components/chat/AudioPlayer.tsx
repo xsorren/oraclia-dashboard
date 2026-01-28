@@ -63,28 +63,28 @@ export function AudioPlayer({ src }: AudioPlayerProps) {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-slate-800/50 p-2 rounded-xl min-w-[220px] max-w-[300px] border border-slate-700/50 backdrop-blur-sm">
+    <div className="flex items-center gap-2 sm:gap-3 bg-slate-800/50 p-2 rounded-xl min-w-[180px] sm:min-w-[220px] max-w-full sm:max-w-[300px] border border-slate-700/50 backdrop-blur-sm">
       <audio ref={audioRef} src={src} preload="metadata" />
       
       <button 
         onClick={togglePlay}
-        className="w-8 h-8 flex items-center justify-center bg-white text-purple-600 rounded-full hover:scale-105 transition-transform shadow-md"
+        className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center bg-white text-purple-600 rounded-full hover:scale-105 transition-transform shadow-md"
       >
         {isPlaying ? (
-            <Pause size={14} fill="currentColor" />
+            <Pause size={12} className="sm:w-3.5 sm:h-3.5" fill="currentColor" />
         ) : (
-            <Play size={14} fill="currentColor" className="ml-0.5" />
+            <Play size={12} className="sm:w-3.5 sm:h-3.5 ml-0.5" fill="currentColor" />
         )}
       </button>
 
-      <div className="flex-1 flex flex-col gap-1">
+      <div className="flex-1 flex flex-col gap-1 min-w-0">
         <div className="h-1 bg-slate-600 rounded-full overflow-hidden w-full">
             <div 
                 className="h-full bg-purple-400 transition-all duration-100 ease-linear rounded-full" 
                 style={{ width: `${progress}%` }} 
             />
         </div>
-        <div className="flex justify-between text-[10px] font-mono text-slate-400">
+        <div className="flex justify-between text-[9px] sm:text-[10px] font-mono text-slate-400">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
         </div>

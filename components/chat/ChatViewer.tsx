@@ -10,17 +10,17 @@ interface ChatViewerProps {
 export function ChatViewer({ session, messages }: ChatViewerProps) {
   if (!messages || messages.length === 0) {
     return (
-        <div className="flex flex-col items-center justify-center h-[300px] text-slate-500">
-            <p>No hay mensajes en esta conversación.</p>
+        <div className="flex flex-col items-center justify-center h-[200px] sm:h-[300px] text-slate-500">
+            <p className="text-sm">No hay mensajes en esta conversación.</p>
         </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-4 sm:gap-6 p-2 sm:p-4">
       {/* Intro Date Separator */}
       <div className="flex justify-center">
-        <span className="textxs font-medium text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full">
+        <span className="text-xs font-medium text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full">
             Inició la consulta
         </span>
       </div>

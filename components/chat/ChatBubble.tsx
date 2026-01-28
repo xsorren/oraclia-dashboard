@@ -39,19 +39,19 @@ export function ChatBubble({ message, sender }: ChatBubbleProps) {
     : 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-tr-none shadow-lg';
 
   return (
-    <div className={cn("flex gap-3 max-w-full", alignClass)}>
+    <div className={cn("flex gap-2 sm:gap-3 max-w-full", alignClass)}>
       {/* Avatar (Only for Left side / Reader) */}
       {isReader && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 self-end mb-1">
+        <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 self-end mb-1">
           {sender?.avatar_url ? (
             <img src={sender.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <User className="w-4 h-4 text-slate-400" />
+            <User className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
           )}
         </div>
       )}
 
-      <div className={cn("flex flex-col gap-1 max-w-[80%] min-w-[120px]", isReader ? "items-start" : "items-end")}>
+      <div className={cn("flex flex-col gap-1 max-w-[85%] sm:max-w-[80%] min-w-[100px] sm:min-w-[120px]", isReader ? "items-start" : "items-end")}>
          {/* Name (for Reader) */}
          {isReader && sender && (
              <span className="text-[10px] text-slate-500 ml-1">{sender.display_name}</span>
@@ -59,7 +59,7 @@ export function ChatBubble({ message, sender }: ChatBubbleProps) {
 
          {/* Attachments */}
          {message.attachments && message.attachments.length > 0 && (
-            <div className="flex flex-col gap-2 mb-1">
+            <div className="flex flex-col gap-2 mb-1 w-full">
                 {message.attachments.map(att => (
                     <div key={att.id}>
                         {att.media_kind === 'image' && att.url && (
@@ -75,7 +75,7 @@ export function ChatBubble({ message, sender }: ChatBubbleProps) {
 
          {/* Text Bubble */}
          {message.body_text && (
-            <div className={cn("px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words", bubbleClass)}>
+            <div className={cn("px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words", bubbleClass)}>
                 {message.body_text}
             </div>
          )}
@@ -88,11 +88,11 @@ export function ChatBubble({ message, sender }: ChatBubbleProps) {
 
       {/* Avatar (Only for Right side / User) */}
       {!isReader && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 self-end mb-1">
+        <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700 self-end mb-1">
           {sender?.avatar_url ? (
             <img src={sender.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <User className="w-4 h-4 text-slate-400" />
+            <User className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
           )}
         </div>
       )}

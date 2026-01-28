@@ -2,17 +2,18 @@
 
 import { ChatViewer } from '@/components/chat/ChatViewer';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { SlideOver } from '@/components/common/SlideOver';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { adminApi } from '@/lib/api/admin';
-import { formatDate } from '@/lib/utils/dates';
+import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
 import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
 import { useQuery } from '@tanstack/react-query';
 import {
     AlertCircle,
     CheckCircle2,
+    ChevronRight,
     Clock,
     Eye,
     MessageCircle,
@@ -137,7 +138,90 @@ export default function ConsultasPrivadasPage() {
                         description="Intenta ajustar los filtros o la búsqueda para encontrar lo que necesitas."
                     />
                 ) : (
-                    <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha']}>
+                    <>
+                        {/* Mobile Cards */}
+                        <MobileCardList>
+                            {data.data.map((consultation: any) => {
+                                const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
+                                const StatusIcon = statusInfo.icon;
+                                
+                                return (
+                                    <MobileCard 
+                                        key={consultation.id} 
+                                        onClick={() => setSelectedConsultation(consultation.id)}
+                                    >
+                                        <MobileCardHeader>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                    {consultation.user?.avatar_url ? (
+                                                        <img src={consultation.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <User className="w-5 h-5 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-sm font-medium text-white truncate">
+                                                        {consultation.user?.display_name || 'Desconocido'}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                        {formatRelativeTime(consultation.created_at)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                                        </MobileCardHeader>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${statusInfo.color}`}>
+                                                <StatusIcon className="w-3 h-3" />
+                                                {statusInfo.label}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                <span>{getServiceEmoji(consultation.service_kind)}</span>
+                                                <span className="truncate max-w-[120px]">{getServiceName(consultation.service_kind)}</span>
+                                            </div>
+                                        </div>
+
+                                        {consultation.reader && (
+                                            <MobileCardField 
+                                                label="Tarotista" 
+                                                value={
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
+                                                            {consultation.reader.avatar_url ? (
+                                                                <img src={consultation.reader.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="w-3 h-3 text-slate-400" />
+                                                            )}
+                                                        </div>
+                                                        <span className="truncate max-w-[100px]">{consultation.reader.display_name}</span>
+                                                    </div>
+                                                } 
+                                            />
+                                        )}
+
+                                        {consultation.last_message && (
+                                            <div className="bg-slate-900/50 rounded-lg p-3 -mx-1">
+                                                <div className="text-xs text-slate-500 mb-1">
+                                                    {consultation.last_message.sender_type === 'reader' ? 'Tarotista' : 'Usuario'}:
+                                                </div>
+                                                <p className="text-sm text-slate-300 line-clamp-2">
+                                                    {consultation.last_message.body_text}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <MobileCardField 
+                                            label="Mensajes" 
+                                            value={`${consultation.message_count} msgs`} 
+                                        />
+                                    </MobileCard>
+                                );
+                            })}
+                        </MobileCardList>
+
+                        {/* Desktop Table */}
+                        <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha']}>
                         {data.data.map((consultation: any) => {
                             const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
                             const StatusIcon = statusInfo.icon;
@@ -220,6 +304,7 @@ export default function ConsultasPrivadasPage() {
                             );
                         })}
                     </ResponsiveTable>
+                    </>
                 )}
 
                 {/* Pagination */}

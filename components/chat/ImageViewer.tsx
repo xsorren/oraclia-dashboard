@@ -29,7 +29,7 @@ export function ImageViewer({ src, alt }: ImageViewerProps) {
       {/* Thumbnail */}
       <div 
         onClick={() => setIsOpen(true)}
-        className="relative group cursor-zoom-in overflow-hidden rounded-lg w-full max-w-[200px] aspect-[3/4] border border-slate-700/50"
+        className="relative group cursor-zoom-in overflow-hidden rounded-lg w-full max-w-[150px] sm:max-w-[200px] aspect-[3/4] border border-slate-700/50"
       >
         <img 
           src={src} 
@@ -41,18 +41,18 @@ export function ImageViewer({ src, alt }: ImageViewerProps) {
 
       {/* Lightbox Portal */}
       {isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 p-2 sm:p-4">
           <button 
             onClick={() => setIsOpen(false)}
-            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-all"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-all z-10"
           >
-            <X size={24} />
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
           
           <img 
             src={src} 
             alt={alt} 
-            className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200" 
+            className="max-w-full sm:max-w-[95vw] max-h-[90vh] sm:max-h-[95vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200" 
           />
           
           <div 
