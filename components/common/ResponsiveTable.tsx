@@ -33,13 +33,14 @@ export function ResponsiveTable({ headers, children, minWidth = '800px' }: Respo
 interface ResponsiveTableRowProps {
   children: ReactNode;
   onClick?: () => void;
+  className?: string;
 }
 
-export function ResponsiveTableRow({ children, onClick }: ResponsiveTableRowProps) {
+export function ResponsiveTableRow({ children, onClick, className = '' }: ResponsiveTableRowProps) {
   return (
     <tr
       onClick={onClick}
-      className={`hover:bg-slate-800/30 transition hidden md:table-row ${onClick ? 'cursor-pointer' : ''}`}
+      className={`hover:bg-slate-800/30 transition hidden md:table-row ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       {children}
     </tr>
