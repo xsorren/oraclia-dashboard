@@ -25,12 +25,11 @@ import {
     Wallet
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
 export default function TarotistaDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const tarotistaId = params.id as string;
   const { toast } = useToast();
 
@@ -123,21 +122,6 @@ export default function TarotistaDetailPage() {
     if (statusModal) {
       updateStatusMutation.mutate(statusModal);
     }
-  };
-
-  const getPlatformInfo = (currency: Currency) => {
-    if (currency === 'ARS') {
-      return {
-        icon: <Wallet className="w-4 h-4 text-sky-400" />,
-        name: 'MercadoPago',
-        color: 'sky',
-      };
-    }
-    return {
-      icon: <CreditCard className="w-4 h-4 text-blue-400" />,
-      name: 'PayPal',
-      color: 'blue',
-    };
   };
 
   if (isLoading) {

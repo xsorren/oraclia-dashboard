@@ -2,7 +2,6 @@
 
 import { ALLOWED_ADMIN_EMAIL } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
-import { Profile } from '@/types/database';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

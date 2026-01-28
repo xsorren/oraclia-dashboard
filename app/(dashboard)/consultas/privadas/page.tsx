@@ -6,7 +6,6 @@ import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/Respons
 import { SlideOver } from '@/components/common/SlideOver';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
-import { useToast } from '@/components/ui/Toast';
 import { adminApi } from '@/lib/api/admin';
 import { formatDate } from '@/lib/utils/dates';
 import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
@@ -57,7 +56,7 @@ export default function ConsultasPrivadasPage() {
   // Selection State
   const [selectedConsultation, setSelectedConsultation] = useState<string | null>(null);
 
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'private-consultations', page, search, status, serviceKind],
@@ -285,7 +284,7 @@ export default function ConsultasPrivadasPage() {
                             <div className="flex items-center gap-2">
                                 <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center overflow-hidden">
                                      {detailData.data.session.user?.avatar_url ? (
-                                        <img src={detailData.data.session.user.avatar_url} className="w-full h-full object-cover" />
+                                        <img src={detailData.data.session.user.avatar_url} alt="User Avatar" className="w-full h-full object-cover" />
                                      ) : <User size={12} className="text-purple-400"/>}
                                 </div>
                                 <span className="text-sm text-slate-300 truncate">{detailData.data.session.user?.display_name || 'Desconocido'}</span>
@@ -296,7 +295,7 @@ export default function ConsultasPrivadasPage() {
                             <div className="flex items-center gap-2">
                                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center overflow-hidden">
                                      {detailData.data.session.reader?.avatar_url ? (
-                                        <img src={detailData.data.session.reader.avatar_url} className="w-full h-full object-cover" />
+                                        <img src={detailData.data.session.reader.avatar_url} alt="Reader Avatar" className="w-full h-full object-cover" />
                                      ) : <User size={12} className="text-blue-400"/>}
                                 </div>
                                 <span className="text-sm text-slate-300 truncate">{detailData.data.session.reader?.display_name || 'Sin asignar'}</span>

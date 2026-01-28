@@ -53,7 +53,6 @@ const statusConfig: Record<ReportStatus, { label: string; icon: any; color: stri
 export default function ReportesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [viewReport, setViewReport] = useState<Report | null>(null);
   const [emailReport, setEmailReport] = useState<Report | null>(null);
   const [emailSubject, setEmailSubject] = useState('');
@@ -76,7 +75,6 @@ export default function ReportesPage() {
       adminApi.updateReportStatus(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
-      setSelectedReport(null);
       setResolutionNotes('');
       setActionConfirmation(null);
       toast('Estado del reporte actualizado', 'success');
