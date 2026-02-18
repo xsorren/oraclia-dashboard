@@ -1,6 +1,7 @@
 'use client';
 
 import { adminApi, OverviewData } from '@/lib/api/admin';
+import { STALE_TIMES } from '@/lib/constants';
 import { getCurrentMonth, getCurrentYear } from '@/lib/utils/dates';
 import type { Currency } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ export function useOverview(params?: {
       year: params?.year ?? getCurrentYear(),
       currency: params?.currency ?? 'USD',
     }),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIMES.NORMAL,
     refetchOnMount: true,
   });
 }

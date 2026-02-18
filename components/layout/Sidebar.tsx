@@ -1,15 +1,16 @@
 'use client';
 
-import { adminApi } from '@/lib/api/admin';
+import { usePendingReportsCount } from '@/lib/hooks/useReports';
 import { cn } from '@/lib/utils/cn';
-import { useQuery } from '@tanstack/react-query';
 import {
     AlertTriangle,
     DollarSign,
+    Flag,
     LayoutDashboard,
     LogOut,
     MessageCircle,
     Sparkles,
+    User,
     Users,
     Zap
 } from 'lucide-react';
@@ -19,12 +20,12 @@ import { usePathname } from 'next/navigation';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Tarotistas', href: '/tarotistas', icon: Users },
+  { name: 'Usuarios', href: '/usuarios', icon: User },
   { name: 'Pagos', href: '/pagos', icon: DollarSign },
-  // { name: 'Finanzas', href: '/finanzas', icon: TrendingUp }, // Hidden for now
   { name: 'Reportes', href: '/reportes', icon: AlertTriangle, showBadge: true },
   { name: 'Flash', href: '/consultas', icon: Zap },
   { name: 'Privadas', href: '/consultas/privadas', icon: MessageCircle },
-  // { name: 'Configuración', href: '/configuracion', icon: Settings }, // Hidden for now
+  { name: 'Rep. Flash', href: '/consultas/flash-reportes', icon: Flag },
 ];
 
 interface SidebarProps {
@@ -34,14 +35,14 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const { data: pendingCount } = usePendingReportsCount();
 
-  // Fetch pending reports count
-  const { data: pendingCount } = useQuery({
-    queryKey: ['admin', 'pending-reports-count'],
-    queryFn: () => adminApi.getPendingReportsCount(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
-  });
+  /**
+   * Determine if a nav item is active.
+   * `/` matches only the exact root; all other paths match any sub-route.
+   */
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
     <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 shadow-2xl">
@@ -59,10 +60,10 @@ export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1">
         {navigation.map((item) => {
-          const isActive = pathname === item.href;
+          const active = isActive(item.href);
           const Icon = item.icon;
           const showBadge = item.showBadge && pendingCount && pendingCount > 0;
-          
+
           return (
             <Link
               key={item.name}
@@ -70,7 +71,7 @@ export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
               onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative',
-                isActive
+                active
                   ? 'bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow-lg shadow-purple-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               )}
@@ -100,3 +101,4 @@ export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 'use client';
 
 import { adminApi, FinancesData } from '@/lib/api/admin';
+import { STALE_TIMES } from '@/lib/constants';
 import { getCurrentMonth, getCurrentYear } from '@/lib/utils/dates';
 import type { Currency } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
@@ -17,13 +18,13 @@ export function useFinances(params?: {
       year: params?.year ?? getCurrentYear(),
       currency: params?.currency,
     }),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIMES.NORMAL,
   });
 }
 
 /**
- * Hook to fetch the consolidated finances summary (without currency filter)
- * Returns platform_summary with real payments grouped by MercadoPago/PayPal
+ * Hook to fetch the consolidated finances summary (without currency filter).
+ * Returns platform_summary with real payments grouped by MercadoPago/PayPal.
  */
 export function useFinancesSummary(params?: {
   month?: number;
@@ -34,8 +35,8 @@ export function useFinancesSummary(params?: {
     queryFn: () => adminApi.getFinances({
       month: params?.month ?? getCurrentMonth(),
       year: params?.year ?? getCurrentYear(),
-      // No currency = get all platforms summary
+      // No currency → get all-platforms summary
     }),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIMES.NORMAL,
   });
 }

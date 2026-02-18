@@ -1,6 +1,7 @@
 'use client';
 
 import { ToastProvider } from '@/components/ui/Toast';
+import { STALE_TIMES } from '@/lib/constants';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -10,7 +11,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            // Per-hook staleTime takes precedence; this is the fallback for any
+            // query that does not specify one.
+            staleTime: STALE_TIMES.HOT,
             refetchOnWindowFocus: false,
           },
         },

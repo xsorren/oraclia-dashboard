@@ -3,14 +3,15 @@
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
 import { adminApi } from '@/lib/api/admin';
+import { useMonthlyPayouts, useProcessMonthlyPayout, useUpdatePayoutStatus, useUploadReceipt } from '@/lib/hooks/usePagos';
 import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
 import type { Currency, PayoutStatus } from '@/types/database';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     Calendar,
     CheckCircle2,
@@ -66,70 +67,19 @@ export default function PagosMensualesPage() {
   const [payoutForReceipt, setPayoutForReceipt] = useState<string | null>(null);
   const [viewReceiptUrl, setViewReceiptUrl] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['admin', 'monthly-payouts', selectedMonth, selectedYear, platformFilter],
-    queryFn: () => adminApi.getMonthlyPayouts({ 
-      month: selectedMonth, 
-      year: selectedYear,
-      platform: platformFilter,
-    }),
-    staleTime: 1000 * 60 * 2,
+  const { data, isLoading, refetch } = useMonthlyPayouts({
+    month: selectedMonth,
+    year: selectedYear,
+    platform: platformFilter,
   });
 
-  const processPayoutMutation = useMutation({
-    mutationFn: (payout: MonthlyPayoutData) => adminApi.processPayout({ 
-      readerId: payout.reader_id, 
-      month: selectedMonth,
-      year: selectedYear,
-      currency: payout.currency,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'monthly-payouts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'payout-history'] });
-      setPayoutToProcess(null);
-      toast('Pago procesado correctamente', 'success');
-    },
-    onError: (error: Error) => {
-      toast('Error al procesar el pago: ' + error.message, 'error');
-      setPayoutToProcess(null);
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ payoutId, status }: { payoutId: string; status: PayoutStatus }) => 
-      adminApi.updatePayoutStatus({ payoutId, status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'monthly-payouts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'payout-history'] });
-      setStatusToUpdate(null);
-      toast('Estado actualizado correctamente', 'success');
-    },
-    onError: (error: Error) => {
-        toast('Error al actualizar el estado: ' + error.message, 'error');
-        setStatusToUpdate(null);
-    }
-  });
-
-  const uploadReceiptMutation = useMutation({
-    mutationFn: ({ payoutId, file }: { payoutId: string; file: File }) => 
-      adminApi.uploadPayoutReceipt({ payoutId, file }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'monthly-payouts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'payout-history'] });
-      setPayoutForReceipt(null);
-      toast('Comprobante subido correctamente', 'success');
-    },
-    onError: (error: Error) => {
-      toast('Error al subir comprobante: ' + error.message, 'error');
-      setPayoutForReceipt(null);
-    }
-  });
+  const processPayoutMutation = useProcessMonthlyPayout();
+  const updateStatusMutation = useUpdatePayoutStatus();
+  const uploadReceiptMutation = useUploadReceipt();
 
   const handleExportCSV = async () => {
     setIsExporting(true);
@@ -165,7 +115,19 @@ export default function PagosMensualesPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && payoutForReceipt) {
-      uploadReceiptMutation.mutate({ payoutId: payoutForReceipt, file });
+      uploadReceiptMutation.mutate(
+        { payoutId: payoutForReceipt, file },
+        {
+          onSuccess: () => {
+            setPayoutForReceipt(null);
+            toast('Comprobante subido correctamente', 'success');
+          },
+          onError: (error: Error) => {
+            toast('Error al subir comprobante: ' + error.message, 'error');
+            setPayoutForReceipt(null);
+          },
+        },
+      );
     }
     event.target.value = '';
   };
@@ -180,7 +142,24 @@ export default function PagosMensualesPage() {
 
   const confirmProcessPayout = () => {
     if (payoutToProcess) {
-      processPayoutMutation.mutate(payoutToProcess);
+      processPayoutMutation.mutate(
+        {
+          readerId: payoutToProcess.reader_id,
+          month: selectedMonth,
+          year: selectedYear,
+          currency: payoutToProcess.currency,
+        },
+        {
+          onSuccess: () => {
+            setPayoutToProcess(null);
+            toast('Pago procesado correctamente', 'success');
+          },
+          onError: (error: Error) => {
+            toast('Error al procesar el pago: ' + error.message, 'error');
+            setPayoutToProcess(null);
+          },
+        },
+      );
     }
   };
 
@@ -194,7 +173,16 @@ export default function PagosMensualesPage() {
 
   const confirmUpdateStatus = () => {
     if (statusToUpdate) {
-      updateStatusMutation.mutate(statusToUpdate);
+      updateStatusMutation.mutate(statusToUpdate, {
+        onSuccess: () => {
+          setStatusToUpdate(null);
+          toast('Estado actualizado correctamente', 'success');
+        },
+        onError: (error: Error) => {
+          toast('Error al actualizar el estado: ' + error.message, 'error');
+          setStatusToUpdate(null);
+        },
+      });
     }
   };
 
@@ -294,7 +282,7 @@ export default function PagosMensualesPage() {
       
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[2000px] mx-auto">
         {/* Month/Year Selector */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-6">
+        <SectionCard className="p-4 sm:p-6" padding="none">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="flex items-center gap-2 sm:gap-4">
               <button
@@ -352,7 +340,6 @@ export default function PagosMensualesPage() {
               </Link>
             </div>
           </div>
-        </div>
 
         {/* Platform Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -494,6 +481,7 @@ export default function PagosMensualesPage() {
             </div>
           </button>
         </div>
+        </SectionCard>
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -552,7 +540,7 @@ export default function PagosMensualesPage() {
         {isLoading ? (
           <TableSkeleton columns={6} rows={8} />
         ) : (
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+          <SectionCard padding="none" className="overflow-hidden">
             {!data || !data.data || data.data.length === 0 ? (
               <EmptyState 
                 icon={TrendingUp}
@@ -766,7 +754,7 @@ export default function PagosMensualesPage() {
               </ResponsiveTable>
               </>
             )}
-          </div>
+          </SectionCard>
         )}
       </div>
 

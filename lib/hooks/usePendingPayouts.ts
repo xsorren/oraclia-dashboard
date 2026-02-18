@@ -1,6 +1,7 @@
 'use client';
 
 import { adminApi } from '@/lib/api/admin';
+import { STALE_TIMES } from '@/lib/constants';
 import { Currency } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
 
@@ -12,6 +13,6 @@ export function usePendingPayouts(params?: {
     queryFn: () => adminApi.getPendingPayouts({
       currency: params?.currency ?? 'USD',
     }),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: STALE_TIMES.HOT,
   });
 }

@@ -1,15 +1,15 @@
 'use client';
 
 import { EmptyState } from '@/components/common/EmptyState';
+import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useTarotistas } from '@/lib/hooks/useTarotistas';
 import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
 import {
-    ChevronLeft,
-    ChevronRight,
     CreditCard,
     Search,
     UserCheck,
@@ -70,8 +70,6 @@ export default function TarotistasPage() {
     filteredData = filteredData.filter(t => t.preferred_currency === currencyFilter);
   }
 
-  const totalPages = Math.ceil(pagination.total / limit);
-
   const getPlatformBadge = (currency: string) => {
     if (currency === 'ARS') {
       return (
@@ -102,7 +100,7 @@ export default function TarotistasPage() {
       
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[2000px] mx-auto">
         {/* Filters and Search */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-6">
+        <SectionCard className="p-4 sm:p-6" padding="none">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
@@ -173,13 +171,13 @@ export default function TarotistasPage() {
               </select>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         {/* Table */}
         {isLoading ? (
             <TableSkeleton columns={8} rows={10} />
         ) : (
-            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+            <SectionCard padding="none" className="overflow-hidden">
                 {!filteredData || filteredData.length === 0 ? (
                     <EmptyState 
                         icon={Users2}
@@ -327,68 +325,15 @@ export default function TarotistasPage() {
                     </>
                 )}
 
-                {/* Pagination */}
-                {pagination.pages > 1 && (
-                    <div className="px-6 py-4 bg-slate-800/30 border-t border-slate-700">
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm text-slate-400">
-                                Mostrando <span className="font-medium text-white">{(page - 1) * limit + 1}</span> a{' '}
-                                <span className="font-medium text-white">
-                                    {Math.min(page * limit, pagination.total)}
-                                </span>{' '}
-                                de <span className="font-medium text-white">{pagination.total}</span> tarotistas
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                >
-                                    <ChevronLeft className="w-5 h-5" />
-                                </button>
-
-                                <div className="flex items-center gap-1">
-                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                        let pageNum: number;
-                                        if (totalPages <= 5) {
-                                            pageNum = i + 1;
-                                        } else if (page <= 3) {
-                                            pageNum = i + 1;
-                                        } else if (page >= totalPages - 2) {
-                                            pageNum = totalPages - 4 + i;
-                                        } else {
-                                            pageNum = page - 2 + i;
-                                        }
-
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => setPage(pageNum)}
-                                                className={`min-w-[2.5rem] px-3 py-2 text-sm font-medium rounded-lg transition ${
-                                                    page === pageNum
-                                                        ? 'bg-purple-500 text-white'
-                                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                                }`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                >
-                                    <ChevronRight className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                <Pagination
+                    page={page}
+                    pages={pagination.pages}
+                    total={pagination.total}
+                    limit={limit}
+                    onPageChange={setPage}
+                    itemLabel="tarotistas"
+                />
+            </SectionCard>
         )}
       </div>
     </>

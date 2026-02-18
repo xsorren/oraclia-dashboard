@@ -1,15 +1,17 @@
 'use client';
 
+import { CurrencySelector } from '@/components/common/CurrencySelector';
+import { SectionCard } from '@/components/common/SectionCard';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { Header } from '@/components/layout/Header';
 import { useOverview } from '@/lib/hooks/useOverview';
 import { usePendingPayouts } from '@/lib/hooks/usePendingPayouts';
-import { formatCurrency } from '@/lib/utils/currency';
+import { type Currency, formatCurrency, formatCurrencyCompact } from '@/lib/utils/currency';
 import { CreditCard, DollarSign, MessageSquare, RefreshCw, TrendingUp, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import type { Currency } from '@/types/database';
+
 
 export default function DashboardPage() {
   const [currency, setCurrency] = useState<Currency>('USD');
@@ -21,10 +23,6 @@ export default function DashboardPage() {
   const { data: overviewARS } = useOverview({ currency: 'ARS' });
   const { data: overviewUSD } = useOverview({ currency: 'USD' });
   const { data: overviewEUR } = useOverview({ currency: 'EUR' });
-
-  const handleRefresh = () => {
-    refetchOverview();
-  };
 
   return (
     <>
@@ -39,19 +37,15 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <label className="text-sm text-slate-400 font-medium whitespace-nowrap">Moneda:</label>
-            <select
+            <CurrencySelector
               value={currency}
-              onChange={(e) => setCurrency(e.target.value as Currency)}
-              className="flex-1 sm:flex-none px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="USD">USD ($)</option>
-              <option value="ARS">ARS ($)</option>
-              <option value="EUR">EUR (€)</option>
-            </select>
+              onChange={setCurrency}
+              className="flex-1 sm:flex-none"
+            />
           </div>
           
           <button
-            onClick={handleRefresh}
+            onClick={() => refetchOverview()}
             disabled={isLoadingOverview}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-white transition disabled:opacity-50"
           >
@@ -114,13 +108,13 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-xs text-slate-400">Ingresos</p>
                   <p className="text-lg font-bold text-green-400">
-                    {formatCurrency(overviewARS?.gross_revenue ?? 0, 'ARS')}
+                    {formatCurrencyCompact(overviewARS?.gross_revenue ?? 0, 'ARS')}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400">Beneficio</p>
                   <p className="text-lg font-bold text-sky-400">
-                    {formatCurrency(overviewARS?.net_profit ?? 0, 'ARS')}
+                    {formatCurrencyCompact(overviewARS?.net_profit ?? 0, 'ARS')}
                   </p>
                 </div>
               </div>
@@ -146,13 +140,13 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-xs text-slate-400 mb-1">USD</p>
                   <p className="text-sm font-semibold text-green-400">
-                    {formatCurrency(overviewUSD?.net_profit ?? 0, 'USD')}
+                    {formatCurrencyCompact(overviewUSD?.net_profit ?? 0, 'USD')}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 mb-1">EUR</p>
                   <p className="text-sm font-semibold text-indigo-400">
-                    {formatCurrency(overviewEUR?.net_profit ?? 0, 'EUR')}
+                    {formatCurrencyCompact(overviewEUR?.net_profit ?? 0, 'EUR')}
                   </p>
                 </div>
               </div>
@@ -163,7 +157,7 @@ export default function DashboardPage() {
         {/* Quick Actions & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Top Tarotistas */}
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
+          <SectionCard padding="md">
             <h3 className="text-lg font-semibold text-white mb-4">Top Tarotistas del Mes</h3>
             {isLoadingOverview ? (
               <div className="flex items-center justify-center py-12">
@@ -193,10 +187,10 @@ export default function DashboardPage() {
                 <p>No hay datos disponibles</p>
               </div>
             )}
-          </div>
+          </SectionCard>
 
           {/* Financial Summary */}
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
+          <SectionCard padding="md">
             <h3 className="text-lg font-semibold text-white mb-4">Resumen Financiero</h3>
             {isLoadingOverview ? (
               <div className="flex items-center justify-center py-12">
@@ -272,7 +266,7 @@ export default function DashboardPage() {
                 <p>No hay datos disponibles</p>
               </div>
             )}
-          </div>
+          </SectionCard>
         </div>
       </div>
     </>

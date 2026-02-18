@@ -2,32 +2,33 @@
 
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
+import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
-import { adminApi, Report, ReportStatus } from '@/lib/api/admin';
+import type { Report, ReportStatus } from '@/lib/api/admin';
+import { useReports, useUpdateReportStatus } from '@/lib/hooks/useReportes';
 import { formatDate } from '@/lib/utils/dates';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     Eye,
     Mail,
     MessageSquare,
     Send,
     Shield,
-    XCircle
+    XCircle,
+    type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 type StatusFilter = ReportStatus | 'all';
 
-const statusConfig: Record<ReportStatus, { label: string; icon: any; color: string }> = {
+const statusConfig: Record<ReportStatus, { label: string; icon: LucideIcon; color: string }> = {
   pending: {
     label: 'Pendiente',
     icon: Clock,
@@ -50,53 +51,222 @@ const statusConfig: Record<ReportStatus, { label: string; icon: any; color: stri
   },
 };
 
+// ---------------------------------------------------------------------------
+// Local modal components (scoped to this module)
+// ---------------------------------------------------------------------------
+
+interface ReportDetailModalProps {
+  report: Report;
+  onClose: () => void;
+  onEmailReport: (report: Report) => void;
+}
+
+function ReportDetailModal({ report, onClose, onEmailReport }: ReportDetailModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <h3 className="text-lg font-semibold text-white">Detalle del Reporte</h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+          >
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Reportante</p>
+              <p className="text-sm text-white font-medium">{report.reporter_name}</p>
+              <p className="text-xs text-slate-400 capitalize">{report.reporter_type}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Reportado</p>
+              <Link
+                href={`/tarotistas/${report.reported_id}`}
+                className="text-sm text-purple-400 hover:text-purple-300 font-medium"
+              >
+                {report.reported_name}
+              </Link>
+              <p className="text-xs text-slate-400 capitalize">{report.reported_type}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Estado</p>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[report.status].color}`}
+              >
+                {statusConfig[report.status].label}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Fecha</p>
+              <p className="text-sm text-slate-300">{formatDate(report.created_at)}</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 mb-2">Mensaje del Reporte</p>
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+              <p className="text-sm text-slate-200 whitespace-pre-wrap">
+                {report.reason || 'Sin mensaje'}
+              </p>
+            </div>
+          </div>
+          {report.resolution_notes && (
+            <div>
+              <p className="text-xs text-slate-500 mb-2">Notas de Resolución</p>
+              <div className="bg-green-900/20 border border-green-800/50 rounded-lg p-4">
+                <p className="text-sm text-green-300 whitespace-pre-wrap">
+                  {report.resolution_notes}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800">
+          {report.reporter_email && (
+            <button
+              onClick={() => onEmailReport(report)}
+              className="px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition flex items-center gap-2"
+            >
+              <Mail className="w-4 h-4" />
+              Responder por Email
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface EmailComposeModalProps {
+  report: Report;
+  onClose: () => void;
+}
+
+function EmailComposeModal({ report, onClose }: EmailComposeModalProps) {
+  const [subject, setSubject] = useState(
+    `Re: Tu reporte en Oraclia - ${report.reported_name}`,
+  );
+  const [body, setBody] = useState(
+    `Hola ${report.reporter_name},\n\nGracias por contactarnos respecto a tu reporte sobre ${report.reported_name}.\n\n[Tu mensaje aquí]\n\nSaludos,\nEquipo Oraclia`,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Mail className="w-5 h-5 text-amber-400" />
+            Responder a {report.reporter_name}
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+          >
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Para</p>
+            <p className="text-sm text-white bg-slate-800/50 px-3 py-2 rounded-lg">
+              {report.reporter_email}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Asunto</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              placeholder="Asunto del email..."
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Mensaje</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              placeholder="Escribe tu respuesta..."
+            />
+          </div>
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
+            <p className="text-xs text-slate-500 mb-2">Reporte Original:</p>
+            <p className="text-sm text-slate-400 italic line-clamp-3">&quot;{report.reason}&quot;</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
+          >
+            Cancelar
+          </button>
+          <a
+            href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+            onClick={onClose}
+            className="px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition flex items-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            Abrir en Cliente de Email
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
   const [viewReport, setViewReport] = useState<Report | null>(null);
   const [emailReport, setEmailReport] = useState<Report | null>(null);
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [actionConfirmation, setActionConfirmation] = useState<{ reportId: string, status: ReportStatus } | null>(null);
   const limit = 15;
 
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'reports', statusFilter, page, limit],
-    queryFn: () => adminApi.getReports({ status: statusFilter, page, limit }),
-    staleTime: 1000 * 60 * 2,
-  });
+  const { data, isLoading } = useReports({ status: statusFilter, page, limit });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: (params: { reportId: string; status: ReportStatus; resolution_notes?: string }) =>
-      adminApi.updateReportStatus(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
-      setResolutionNotes('');
-      setActionConfirmation(null);
-      toast('Estado del reporte actualizado', 'success');
-    },
-    onError: (error: Error) => {
-        toast('Error al actualizar: ' + error.message, 'error');
-        setActionConfirmation(null);
-    }
-  });
+  const updateStatusMutation = useUpdateReportStatus();
 
   const handleStatusChangeInit = (reportId: string, newStatus: ReportStatus) => {
     setActionConfirmation({ reportId, status: newStatus });
   };
-  
+
   const handleConfirmAction = () => {
-    if (actionConfirmation) {
-        updateStatusMutation.mutate({
-            reportId: actionConfirmation.reportId,
-            status: actionConfirmation.status,
-            resolution_notes: resolutionNotes || undefined,
-        });
-    }
+    if (!actionConfirmation) return;
+    updateStatusMutation.mutate(
+      {
+        reportId: actionConfirmation.reportId,
+        status: actionConfirmation.status,
+        resolution_notes: resolutionNotes || undefined,
+      },
+      {
+        onSuccess: () => {
+          setResolutionNotes('');
+          setActionConfirmation(null);
+          toast('Estado del reporte actualizado', 'success');
+        },
+        onError: (error: Error) => {
+          toast('Error al actualizar: ' + error.message, 'error');
+          setActionConfirmation(null);
+        },
+      },
+    );
   };
 
   const reports = data?.data || [];
@@ -116,7 +286,7 @@ export default function ReportesPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[2000px] mx-auto">
         {/* Stats Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-5">
+          <SectionCard padding="none" className="p-4 sm:p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-yellow-500/10 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
@@ -124,9 +294,9 @@ export default function ReportesPage() {
               <p className="text-sm text-slate-400">Pendientes</p>
             </div>
             <p className="text-2xl font-bold text-white">{pendingCount}</p>
-          </div>
+          </SectionCard>
 
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-5">
+          <SectionCard padding="none" className="p-4 sm:p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <Eye className="w-5 h-5 text-blue-500" />
@@ -134,9 +304,9 @@ export default function ReportesPage() {
               <p className="text-sm text-slate-400">En Revisión</p>
             </div>
             <p className="text-2xl font-bold text-white">{reviewingCount}</p>
-          </div>
+          </SectionCard>
 
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-5">
+          <SectionCard padding="none" className="p-4 sm:p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <Shield className="w-5 h-5 text-purple-500" />
@@ -144,11 +314,11 @@ export default function ReportesPage() {
               <p className="text-sm text-slate-400">Total Reportes</p>
             </div>
             <p className="text-2xl font-bold text-white">{pagination.total}</p>
-          </div>
+          </SectionCard>
         </div>
 
         {/* Filters */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4">
+        <SectionCard padding="none" className="p-4">
           <div className="flex items-center gap-4 overflow-x-auto pb-2 sm:pb-0">
             {(['all', 'pending', 'reviewing', 'resolved', 'dismissed'] as const).map((status) => (
               <button
@@ -167,13 +337,13 @@ export default function ReportesPage() {
               </button>
             ))}
           </div>
-        </div>
+        </SectionCard>
 
         {/* Reports List */}
         {isLoading ? (
             <TableSkeleton columns={7} rows={10} />
         ) : (
-            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+            <SectionCard padding="none" className="overflow-hidden">
                 {!reports || reports.length === 0 ? (
                     <EmptyState 
                         icon={Shield}
@@ -226,8 +396,6 @@ export default function ReportesPage() {
                                                 <button
                                                     onClick={() => {
                                                         setEmailReport(report);
-                                                        setEmailSubject(`Re: Tu reporte en Oraclia - ${report.reported_name}`);
-                                                        setEmailBody(`Hola ${report.reporter_name},\n\nGracias por contactarnos respecto a tu reporte sobre ${report.reported_name}.\n\n[Tu mensaje aquí]\n\nSaludos,\nEquipo Oraclia`);
                                                     }}
                                                     className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
                                                 >
@@ -308,8 +476,6 @@ export default function ReportesPage() {
                                                 <button
                                                     onClick={() => {
                                                         setEmailReport(report);
-                                                        setEmailSubject(`Re: Tu reporte en Oraclia - ${report.reported_name}`);
-                                                        setEmailBody(`Hola ${report.reporter_name},\n\nGracias por contactarnos respecto a tu reporte sobre ${report.reported_name}.\n\n[Tu mensaje aquí]\n\nSaludos,\nEquipo Oraclia`);
                                                     }}
                                                     className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded transition"
                                                     title="Responder por email"
@@ -353,31 +519,15 @@ export default function ReportesPage() {
                     </>
                 )}
 
-                {/* Pagination */}
-                {pagination.pages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800">
-                        <p className="text-sm text-slate-400">
-                            Página {pagination.page} de {pagination.pages}
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={pagination.page === 1}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50"
-                            >
-                                <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
-                                disabled={pagination.page === pagination.pages}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50"
-                            >
-                                <ChevronRight className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+                <Pagination
+                    page={pagination.page}
+                    pages={pagination.pages}
+                    total={pagination.total}
+                    limit={limit}
+                    onPageChange={setPage}
+                    itemLabel="reportes"
+                />
+            </SectionCard>
         )}
       </div>
 
@@ -391,174 +541,21 @@ export default function ReportesPage() {
         isDestructive={actionConfirmation?.status === 'dismissed'}
       />
 
-      {/* View Report Modal */}
       {viewReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-              <h3 className="text-lg font-semibold text-white">Detalle del Reporte</h3>
-              <button
-                onClick={() => setViewReport(null)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Reportante</p>
-                  <p className="text-sm text-white font-medium">{viewReport.reporter_name}</p>
-                  <p className="text-xs text-slate-400 capitalize">{viewReport.reporter_type}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Reportado</p>
-                  <Link 
-                    href={`/tarotistas/${viewReport.reported_id}`}
-                    className="text-sm text-purple-400 hover:text-purple-300 font-medium"
-                  >
-                    {viewReport.reported_name}
-                  </Link>
-                  <p className="text-xs text-slate-400 capitalize">{viewReport.reported_type}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Estado</p>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[viewReport.status].color}`}>
-                    {statusConfig[viewReport.status].label}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Fecha</p>
-                  <p className="text-sm text-slate-300">{formatDate(viewReport.created_at)}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 mb-2">Mensaje del Reporte</p>
-                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap">
-                    {viewReport.reason || 'Sin mensaje'}
-                  </p>
-                </div>
-              </div>
-              {viewReport.resolution_notes && (
-                <div>
-                  <p className="text-xs text-slate-500 mb-2">Notas de Resolución</p>
-                  <div className="bg-green-900/20 border border-green-800/50 rounded-lg p-4">
-                    <p className="text-sm text-green-300 whitespace-pre-wrap">
-                      {viewReport.resolution_notes}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800">
-              {viewReport.reporter_email && (
-                <button
-                  onClick={() => {
-                    setViewReport(null);
-                    setEmailReport(viewReport);
-                    setEmailSubject(`Re: Tu reporte en Oraclia - ${viewReport.reported_name}`);
-                    setEmailBody(`Hola ${viewReport.reporter_name},\n\nGracias por contactarnos respecto a tu reporte sobre ${viewReport.reported_name}.\n\n[Tu mensaje aquí]\n\nSaludos,\nEquipo Oraclia`);
-                  }}
-                  className="px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition flex items-center gap-2"
-                >
-                  <Mail className="w-4 h-4" />
-                  Responder por Email
-                </button>
-              )}
-              <button
-                onClick={() => setViewReport(null)}
-                className="px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReportDetailModal
+          report={viewReport}
+          onClose={() => setViewReport(null)}
+          onEmailReport={(r) => {
+            setViewReport(null);
+            setEmailReport(r);
+          }}
+        />
       )}
-
-      {/* Email Compose Modal */}
       {emailReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Mail className="w-5 h-5 text-amber-400" />
-                Responder a {emailReport.reporter_name}
-              </h3>
-              <button
-                onClick={() => {
-                  setEmailReport(null);
-                  setEmailSubject('');
-                  setEmailBody('');
-                }}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
-              <div>
-                <p className="text-xs text-slate-500 mb-1">Para</p>
-                <p className="text-sm text-white bg-slate-800/50 px-3 py-2 rounded-lg">
-                  {emailReport.reporter_email}
-                </p>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Asunto</label>
-                <input
-                  type="text"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="Asunto del email..."
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-1 block">Mensaje</label>
-                <textarea
-                  value={emailBody}
-                  onChange={(e) => setEmailBody(e.target.value)}
-                  rows={10}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                  placeholder="Escribe tu respuesta..."
-                />
-              </div>
-              <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
-                <p className="text-xs text-slate-500 mb-2">Reporte Original:</p>
-                <p className="text-sm text-slate-400 italic line-clamp-3">
-                  &quot;{emailReport.reason}&quot;
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800">
-              <button
-                onClick={() => {
-                  setEmailReport(null);
-                  setEmailSubject('');
-                  setEmailBody('');
-                }}
-                className="px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
-              >
-                Cancelar
-              </button>
-              <a
-                href={`mailto:${emailReport.reporter_email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
-                onClick={() => {
-                  setEmailReport(null);
-                  setEmailSubject('');
-                  setEmailBody('');
-                }}
-                className="px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition flex items-center gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Abrir en Cliente de Email
-              </a>
-            </div>
-          </div>
-        </div>
+        <EmailComposeModal
+          report={emailReport}
+          onClose={() => setEmailReport(null)}
+        />
       )}
     </>
   );

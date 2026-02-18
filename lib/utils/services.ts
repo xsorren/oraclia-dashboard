@@ -81,6 +81,33 @@ export function formatServiceKind(serviceKind: string): string {
 }
 
 /**
+ * Service kinds / slugs that are free for users.
+ * These may have a price in service_net_prices for tarotista payout logic,
+ * but should display as "Gratis" in user-facing and admin contexts.
+ * Includes both service_kind enum values (used in consultation_sessions)
+ * and URL slugs (used in the services table).
+ */
+export const FREE_SERVICE_KINDS = new Set([
+  'flash_1carta_gratis',      // service_kind enum value
+  'pregunta-flash-gratis',    // services.slug
+]);
+
+/**
+ * Format a price for display, returning "Gratis" for free service kinds
+ * regardless of the stored amount.
+ * Use this everywhere a price is shown alongside a service_kind.
+ */
+export function formatServicePrice(
+  amount: number,
+  currency: import('@/lib/utils/currency').Currency,
+  serviceKind: string,
+  formatCurrency: (amount: number, currency: import('@/lib/utils/currency').Currency) => string,
+): string {
+  if (FREE_SERVICE_KINDS.has(serviceKind)) return 'Gratis';
+  return formatCurrency(amount, currency);
+}
+
+/**
  * Get category for a service
  */
 export function getServiceCategory(serviceKind: string): string {

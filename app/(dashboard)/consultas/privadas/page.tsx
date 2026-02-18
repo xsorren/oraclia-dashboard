@@ -2,14 +2,16 @@
 
 import { ChatViewer } from '@/components/chat/ChatViewer';
 import { EmptyState } from '@/components/common/EmptyState';
+import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { SlideOver } from '@/components/common/SlideOver';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
-import { adminApi } from '@/lib/api/admin';
+import { useConsultationDetail, usePrivateConsultations } from '@/lib/hooks/useConsultas';
 import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
 import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
-import { useQuery } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
 import {
     AlertCircle,
     CheckCircle2,
@@ -23,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   open: { label: 'Pendiente', icon: Clock, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
   claimed: { label: 'En proceso', icon: Eye, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
   answered: { label: 'Respondida', icon: CheckCircle2, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
@@ -59,19 +61,10 @@ export default function ConsultasPrivadasPage() {
 
   // const { toast } = useToast();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'private-consultations', page, search, status, serviceKind],
-    queryFn: () => adminApi.getPrivateConsultations({ 
-      page, limit: 15, search, status, serviceKind 
-    }),
-  });
+  const { data, isLoading } = usePrivateConsultations({ page, limit: 15, search, status, serviceKind });
 
   // Query for details when selected
-  const { data: detailData, isLoading: isLoadingDetail } = useQuery({
-      queryKey: ['admin', 'consultation-detail', selectedConsultation],
-      queryFn: () => adminApi.getConsultationDetail(selectedConsultation!),
-      enabled: !!selectedConsultation
-  });
+  const { data: detailData, isLoading: isLoadingDetail } = useConsultationDetail(selectedConsultation);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +81,7 @@ export default function ConsultasPrivadasPage() {
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-[2000px] mx-auto">
         {/* Filters */}
-        <div className="flex flex-col xl:flex-row gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+        <SectionCard padding="none" className="flex flex-col xl:flex-row gap-4 p-4">
           <form onSubmit={handleSearch} className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
@@ -124,13 +117,13 @@ export default function ConsultasPrivadasPage() {
                 ))}
             </select>
           </div>
-        </div>
+        </SectionCard>
 
         {/* Content */}
         {isLoading ? (
             <TableSkeleton columns={6} rows={10} />
         ) : (
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-xl overflow-hidden">
+            <SectionCard padding="none" className="overflow-hidden">
                 {!data?.data || data.data.length === 0 ? (
                     <EmptyState 
                         icon={MessageCircle}
@@ -141,7 +134,7 @@ export default function ConsultasPrivadasPage() {
                     <>
                         {/* Mobile Cards */}
                         <MobileCardList>
-                            {data.data.map((consultation: any) => {
+                            {data.data.map((consultation) => {
                                 const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
                                 const StatusIcon = statusInfo.icon;
                                 
@@ -222,7 +215,7 @@ export default function ConsultasPrivadasPage() {
 
                         {/* Desktop Table */}
                         <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha']}>
-                        {data.data.map((consultation: any) => {
+                        {data.data.map((consultation) => {
                             const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
                             const StatusIcon = statusInfo.icon;
                             
@@ -307,31 +300,17 @@ export default function ConsultasPrivadasPage() {
                     </>
                 )}
 
-                {/* Pagination */}
-                {data?.pagination && data.pagination.pages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800">
-                        <p className="text-sm text-slate-400">
-                            Página {data.pagination.page} de {data.pagination.pages}
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={data.pagination.page === 1}
-                                className="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300 disabled:opacity-50"
-                            >
-                                Anterior
-                            </button>
-                            <button
-                                onClick={() => setPage(p => Math.min(data.pagination.pages, p + 1))}
-                                disabled={data.pagination.page === data.pagination.pages}
-                                className="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-slate-300 disabled:opacity-50"
-                            >
-                                Siguiente
-                            </button>
-                        </div>
-                    </div>
+                {data?.pagination && (
+                    <Pagination
+                        page={data.pagination.page}
+                        pages={data.pagination.pages}
+                        total={data.pagination.total}
+                        limit={15}
+                        onPageChange={setPage}
+                        itemLabel="consultas"
+                    />
                 )}
-            </div>
+            </SectionCard>
         )}
       </div>
 

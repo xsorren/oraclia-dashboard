@@ -2,12 +2,13 @@
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useFinances, useFinancesSummary } from '@/lib/hooks/useFinances';
 import { formatCurrency } from '@/lib/utils/currency';
 import { getMonthName } from '@/lib/utils/dates';
-import { getServiceDisplay } from '@/lib/utils/services';
+import { formatServicePrice, getServiceDisplay } from '@/lib/utils/services';
 import type { Currency } from '@/types/database';
 import {
     AlertTriangle,
@@ -59,7 +60,7 @@ export default function FinanzasPage() {
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[2000px] mx-auto">
                 {/* Controls */}
-                <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4 sm:p-6">
+                <SectionCard padding="none" className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">
@@ -107,7 +108,7 @@ export default function FinanzasPage() {
                             </select>
                         </div>
                     </div>
-                </div>
+                </SectionCard>
 
                 {/* Multi-Currency Overview (shown when ALL selected) */}
                 {selectedCurrency === 'ALL' && (
@@ -294,7 +295,7 @@ export default function FinanzasPage() {
                     <>
                         {/* Stats Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-6">
+                            <SectionCard padding="md">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-green-500/10 rounded-lg">
                                         <TrendingUp className="w-6 h-6 text-green-400" />
@@ -306,9 +307,9 @@ export default function FinanzasPage() {
                                         </h3>
                                     </div>
                                 </div>
-                            </div>
+                            </SectionCard>
 
-                            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-6">
+                            <SectionCard padding="md">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-red-500/10 rounded-lg">
                                         <ArrowDownRight className="w-6 h-6 text-red-400" />
@@ -320,9 +321,9 @@ export default function FinanzasPage() {
                                         </h3>
                                     </div>
                                 </div>
-                            </div>
+                            </SectionCard>
 
-                            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-6">
+                            <SectionCard padding="md">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-purple-500/10 rounded-lg">
                                         <Wallet className="w-6 h-6 text-purple-400" />
@@ -334,9 +335,9 @@ export default function FinanzasPage() {
                                         </h3>
                                     </div>
                                 </div>
-                            </div>
+                            </SectionCard>
 
-                            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-6">
+                            <SectionCard padding="md">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-blue-500/10 rounded-lg">
                                         <DollarSign className="w-6 h-6 text-blue-400" />
@@ -350,7 +351,7 @@ export default function FinanzasPage() {
                                         </h3>
                                     </div>
                                 </div>
-                            </div>
+                            </SectionCard>
                         </div>
 
                         {/* Platform Info */}
@@ -373,7 +374,7 @@ export default function FinanzasPage() {
                         {isLoading ? (
                             <TableSkeleton columns={5} rows={5} />
                         ) : (
-                            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+                            <SectionCard padding="none" className="overflow-hidden">
                                 {currencyDetails.profit_by_service.length === 0 ? (
                                     <EmptyState
                                         icon={AlertTriangle}
@@ -388,13 +389,13 @@ export default function FinanzasPage() {
                                                     {getServiceDisplay(item.service_kind)}
                                                 </td>
                                                 <td className="px-6 py-4 text-green-400">
-                                                    {formatCurrency(item.revenue, selectedCurrency)}
+                                                    {formatServicePrice(item.revenue, selectedCurrency, item.service_kind, formatCurrency)}
                                                 </td>
                                                 <td className="px-6 py-4 text-red-400">
-                                                    {formatCurrency(item.expenses, selectedCurrency)}
+                                                    {formatServicePrice(item.expenses, selectedCurrency, item.service_kind, formatCurrency)}
                                                 </td>
                                                 <td className="px-6 py-4 text-purple-400 font-bold">
-                                                    {formatCurrency(item.profit, selectedCurrency)}
+                                                    {formatServicePrice(item.profit, selectedCurrency, item.service_kind, formatCurrency)}
                                                 </td>
                                                 <td className="px-6 py-4 text-blue-400">
                                                     {item.margin.toFixed(1)}%
@@ -403,7 +404,7 @@ export default function FinanzasPage() {
                                         ))}
                                     </ResponsiveTable>
                                 )}
-                            </div>
+                            </SectionCard>
                         )}
                     </>
                 )}

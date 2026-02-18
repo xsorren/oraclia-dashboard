@@ -3,15 +3,64 @@ import type { Currency, PayoutStatus } from '@/types/database';
 
 const EDGE_FUNCTIONS_URL = process.env.NEXT_PUBLIC_EDGE_FUNCTIONS_URL!;
 
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
 async function getAuthToken(): Promise<string> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('No hay sesión activa');
+  return session.access_token;
+}
 
-  if (!session?.access_token) {
-    throw new Error('No hay sesión activa');
+// ─── Internal fetch helper ───────────────────────────────────────────────────
+
+/**
+ * Authenticated fetch wrapper for the admin-dashboard edge function.
+ *
+ * @param method      HTTP verb
+ * @param path        URL path after EDGE_FUNCTIONS_URL
+ * @param options.params     Query-string key/value pairs (undefined values are omitted)
+ * @param options.body       Request body — will be JSON-serialized
+ * @param options.unwrapData When true, returns `json.data`; default returns full JSON body
+ * @param options.errorMessage  Fallback error message when the server body is empty
+ */
+async function adminFetch<T>(
+  method: string,
+  path: string,
+  options: {
+    params?: Record<string, string | number | boolean | undefined | null>;
+    body?: unknown;
+    unwrapData?: boolean;
+    errorMessage?: string;
+  } = {},
+): Promise<T> {
+  const token = await getAuthToken();
+
+  const url = new URL(`${EDGE_FUNCTIONS_URL}/${path}`);
+  if (options.params) {
+    for (const [key, value] of Object.entries(options.params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
+    }
   }
 
-  return session.access_token;
+  const response = await fetch(url.toString(), {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    ...(options.body != null ? { body: JSON.stringify(options.body) } : {}),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || options.errorMessage || 'Error en la solicitud');
+  }
+
+  const json = await response.json();
+  return (options.unwrapData ? json.data : json) as T;
 }
 
 export interface OverviewData {
@@ -44,6 +93,18 @@ export interface TarotistaData {
   platform: 'mercadopago' | 'paypal';
   pending_payout: number;
   created_at: string;
+}
+
+export interface UserData {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  role: string;
+  is_active: boolean;
+  is_banned: boolean;
+  created_at: string;
+  last_sign_in: string | null;
 }
 
 export interface PendingPayout {
@@ -119,13 +180,49 @@ export interface Report {
   updated_at: string;
 }
 
+export interface ConsultationMessage {
+  id: string;
+  body_text?: string;
+  created_at: string;
+  msg_type: string;
+  attachments: Array<{ id: string; media_kind: 'image' | 'audio'; url?: string }>;
+  is_reader: boolean;
+}
+
+/** A report submitted by a tarotista about a Flash question author. */
+export interface FlashReport {
+  id: string;
+  /** The tarotista who filed the report */
+  reporter_id: string;
+  reporter_name: string;
+  /** The user (cliente) who authored the Flash question */
+  reported_id: string;
+  reported_name: string;
+  reported_email: string | null;
+  reported_avatar: string | null;
+  /** Whether the reported user is already banned */
+  reported_is_banned: boolean;
+  /** The Flash question that was reported */
+  question_id: string;
+  question_content: string;
+  question_status: string;
+  question_created_at: string;
+  reason: string;
+  description: string | null;
+  status: ReportStatus;
+  reviewed_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+}
+
 export interface Service {
   id: string;
   slug: string;
   name: string;
   kind: string;
   description: string | null;
-  constraints_json: any;
+  /** JSON constraints blob — shape varies per service kind */
+  constraints_json: unknown;
   is_active: boolean;
   prices: {
     USD: number;
@@ -140,265 +237,250 @@ export interface ConfigurationData {
   services: Service[];
 }
 
-export const adminApi = {
-  async getOverview(params: {
-    month?: number;
-    year?: number;
-    currency?: Currency;
-  }): Promise<OverviewData> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
+// ─── Shared types ─────────────────────────────────────────────────────────────
 
-    if (params.month) searchParams.append('month', params.month.toString());
-    if (params.year) searchParams.append('year', params.year.toString());
-    if (params.currency) searchParams.append('currency', params.currency);
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/overview?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+export interface FlashQuestion {
+  id: string;
+  content: string;
+  status: string;
+  created_at: string;
+  user?: {
+    display_name: string;
+    avatar_url?: string | null;
+  };
+  answer?: {
+    reader_name: string;
+    body_text: string;
+  };
+}
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener overview');
-    }
+export interface PrivateConsultation {
+  id: string;
+  service_kind: string;
+  status: string;
+  created_at: string;
+  message_count: number;
+  user?: {
+    display_name: string;
+    avatar_url?: string | null;
+  };
+  reader?: {
+    display_name: string;
+    avatar_url?: string | null;
+  };
+  last_message?: {
+    sender_type: 'reader' | 'user';
+    body_text: string;
+  };
+}
 
-    const json = await response.json();
-    return json.data;
-  },
-
-  async getTarotistas(params: {
-    search?: string;
-    status?: 'all' | 'active' | 'inactive';
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    data: TarotistaData[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-
-    if (params.search) searchParams.append('search', params.search);
-    if (params.status) searchParams.append('status', params.status);
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/tarotistas?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener tarotistas');
-    }
-
-    return await response.json();
-  },
-
-  async getPendingPayouts(params: {
-    currency?: Currency;
-  }): Promise<{
-    data: PendingPayout[];
-    total_pending: number;
-    count: number;
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-
-    if (params.currency) searchParams.append('currency', params.currency);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/pending-payouts?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener pagos pendientes');
-    }
-
-    return await response.json();
-  },
-
-  async getFinances(params: {
-    month?: number;
-    year?: number;
-    currency?: Currency;
-  }): Promise<FinancesData> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-
-    if (params.month) searchParams.append('month', params.month.toString());
-    if (params.year) searchParams.append('year', params.year.toString());
-    if (params.currency) searchParams.append('currency', params.currency);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/finances?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener finanzas');
-    }
-
-    const json = await response.json();
-    return json.data;
-  },
-
-  async getTarotistaDetail(params: {
+export interface TarotistaDetailData {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  country: string | null;
+  status: 'active' | 'inactive';
+  preferred_currency: Currency;
+  platform: 'mercadopago' | 'paypal';
+  created_at: string;
+  total_earned: number;
+  pending_payout: number;
+  consultations_count: number;
+  last_consultation_at: string | null;
+  bio: string | null;
+  specialties: string[];
+  recent_consultations: Array<{
     id: string;
-    currency?: Currency;
-  }): Promise<{
-    id: string;
-    full_name: string;
-    email: string;
-    phone: string | null;
-    country: string | null;
-    status: 'active' | 'inactive';
-    preferred_currency: Currency;
+    service_kind: string;
+    completed_at: string;
+    net_price: number;
+    currency: string;
+  }>;
+  monthly_stats: Array<{
+    month: string;
+    consultations: number;
+    earnings: number;
+  }>;
+  avg_rating: number;
+  ratings_count: number;
+}
+
+interface PayoutPlatformEntry {
+  payouts: Array<{
+    reader_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    sessions_count: number;
+    amount: number;
+    currency: Currency;
     platform: 'mercadopago' | 'paypal';
-    created_at: string;
-    total_earned: number;
-    pending_payout: number;
-    consultations_count: number;
-    last_consultation_at: string | null;
-    bio: string | null;
-    specialties: string[];
-    recent_consultations: Array<{
-      id: string;
-      service_kind: string;
-      completed_at: string;
-      net_price: number;
-      currency: string;
-    }>;
-    monthly_stats: Array<{
-      month: string;
-      consultations: number;
-      earnings: number;
-    }>;
-    avg_rating: number;
-    ratings_count: number;
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
+    period_start: string | null;
+    period_end: string | null;
+    payout_status: PayoutStatus | null;
+    payout_id: string | null;
+    processed_at: string | null;
+    receipt_url: string | null;
+  }>;
+  total_amount: number;
+  pending_count: number;
+  processed_count: number;
+}
 
-    if (params.currency) searchParams.append('currency', params.currency);
+export interface MonthlyPayoutsData {
+  data: PayoutPlatformEntry['payouts'];
+  by_platform: {
+    mercadopago: PayoutPlatformEntry & { currency: 'ARS' };
+    paypal_usd: PayoutPlatformEntry & { currency: 'USD' };
+    paypal_eur: PayoutPlatformEntry & { currency: 'EUR' };
+  };
+  summary: {
+    total_tarotistas: number;
+    pending_count: number;
+    processed_count: number;
+  };
+}
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/tarotista/${params.id}?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+export interface PayoutEntry {
+  id: string;
+  reader_id: string;
+  display_name: string;
+  amount: number;
+  currency: Currency;
+  platform: 'mercadopago' | 'paypal';
+  sessions_count: number;
+  processed_at: string;
+  processed_by: string;
+  status: PayoutStatus;
+}
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener detalle del tarotista');
-    }
+export interface PayoutHistoryData {
+  data: PayoutEntry[];
+  by_platform: {
+    mercadopago: { total: number; count: number };
+    paypal_usd: { total: number; count: number };
+    paypal_eur: { total: number; count: number };
+  };
+  pagination: Pagination;
+}
 
-    const json = await response.json();
-    return json.data;
-  },
+// ─── API ─────────────────────────────────────────────────────────────────────
 
-  async processPayout(params: {
-    readerId: string;
-    month?: number;
-    year?: number;
-    currency?: 'USD' | 'ARS' | 'EUR';
-  }): Promise<{ success: boolean; message: string; data: any }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
+export const adminApi = {
+  // Overview
+  getOverview: (params: { month?: number; year?: number; currency?: Currency }) =>
+    adminFetch<OverviewData>('GET', 'admin-dashboard/overview', {
+      params: { month: params.month, year: params.year, currency: params.currency },
+      unwrapData: true,
+      errorMessage: 'Error al obtener overview',
+    }),
 
-    if (params.currency) searchParams.append('currency', params.currency);
-    if (params.month) searchParams.append('month', params.month.toString());
-    if (params.year) searchParams.append('year', params.year.toString());
+  // Tarotistas list
+  getTarotistas: (params: { search?: string; status?: 'all' | 'active' | 'inactive'; page?: number; limit?: number }) =>
+    adminFetch<{ data: TarotistaData[]; pagination: Pagination }>('GET', 'admin-dashboard/tarotistas', {
+      params: { search: params.search, status: params.status, page: params.page, limit: params.limit },
+      errorMessage: 'Error al obtener tarotistas',
+    }),
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/process-payout/${params.readerId}?${searchParams.toString()}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+  // Tarotista detail
+  getTarotistaDetail: (params: { id: string; currency?: Currency }) =>
+    adminFetch<TarotistaDetailData>('GET', `admin-dashboard/tarotista/${params.id}`, {
+      params: { currency: params.currency },
+      unwrapData: true,
+      errorMessage: 'Error al obtener detalle del tarotista',
+    }),
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al procesar pago');
-    }
+  // Update tarotista currency
+  updateTarotistaCurrency: (params: { tarotistaId: string; preferredCurrency: Currency }) =>
+    adminFetch<{ success: boolean; message: string; platform: 'mercadopago' | 'paypal' }>(
+      'PATCH', `admin-dashboard/tarotista/${params.tarotistaId}/currency`, {
+        body: { preferred_currency: params.preferredCurrency },
+        errorMessage: 'Error al actualizar moneda del tarotista',
+      },
+    ),
 
-    return await response.json();
-  },
+  // Update tarotista status
+  updateTarotistaStatus: (params: { tarotistaId: string; status: 'active' | 'inactive' }) =>
+    adminFetch<{ success: boolean; message: string; new_status: string }>(
+      'PATCH', `admin-dashboard/tarotista/${params.tarotistaId}/status`, {
+        body: { status: params.status },
+        errorMessage: 'Error al actualizar estado del tarotista',
+      },
+    ),
 
-  async updatePayoutStatus(params: {
+  // Users list
+  getUsers: (params: { search?: string; page?: number; limit?: number; status?: 'all' | 'active' | 'banned' }) =>
+    adminFetch<{ data: UserData[]; pagination: Pagination }>('GET', 'admin-dashboard/users', {
+      params: {
+        search: params.search,
+        page: params.page,
+        limit: params.limit,
+        status: params.status !== 'all' ? params.status : undefined,
+      },
+      errorMessage: 'Error al obtener usuarios',
+    }),
+
+  // Ban/delete user
+  deleteUser: (userId: string) =>
+    adminFetch<{ success: boolean; message: string }>('DELETE', `admin-dashboard/users/${userId}`, {
+      errorMessage: 'Error al eliminar usuario',
+    }),
+
+  // Pending payouts
+  getPendingPayouts: (params: { currency?: Currency }) =>
+    adminFetch<{ data: PendingPayout[]; total_pending: number; count: number }>(
+      'GET', 'admin-dashboard/pending-payouts', {
+        params: { currency: params.currency },
+        errorMessage: 'Error al obtener pagos pendientes',
+      },
+    ),
+
+  // Monthly payouts (pago a tarotistas)
+  getMonthlyPayouts: (params: { month: number; year: number; platform?: 'all' | 'mercadopago' | 'paypal_usd' | 'paypal_eur' }) =>
+    adminFetch<MonthlyPayoutsData>('GET', 'admin-dashboard/monthly-payouts', {
+      params: { month: params.month, year: params.year, platform: params.platform },
+      errorMessage: 'Error al obtener pagos mensuales',
+    }),
+
+  // Process payout
+  processPayout: (params: { readerId: string; month?: number; year?: number; currency?: Currency }) =>
+    adminFetch<{ success: boolean; message: string; data: unknown }>(
+      'POST', `admin-dashboard/process-payout/${params.readerId}`, {
+        params: { currency: params.currency, month: params.month, year: params.year },
+        errorMessage: 'Error al procesar pago',
+      },
+    ),
+
+  // Update payout status
+  updatePayoutStatus: (params: {
     payoutId: string;
     status?: 'pending' | 'completed' | 'failed' | 'cancelled';
     notes?: string;
     payment_date?: string;
     payment_method?: string;
     transaction_reference?: string;
-  }): Promise<{ success: boolean; message: string; data: any }> {
-    const token = await getAuthToken();
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/update-payout-status/${params.payoutId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+  }) =>
+    adminFetch<{ success: boolean; message: string; data: unknown }>(
+      'PATCH', `admin-dashboard/update-payout-status/${params.payoutId}`, {
+        body: {
           status: params.status,
           notes: params.notes,
           payment_date: params.payment_date,
           payment_method: params.payment_method,
           transaction_reference: params.transaction_reference,
-        }),
-      }
-    );
+        },
+        errorMessage: 'Error al actualizar estado',
+      },
+    ),
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al actualizar estado');
-    }
-
-    return await response.json();
-  },
-
+  // Upload payout receipt (FormData — cannot use adminFetch)
   async uploadPayoutReceipt(params: {
     payoutId: string;
     file: File;
@@ -406,493 +488,155 @@ export const adminApi = {
     const token = await getAuthToken();
     const formData = new FormData();
     formData.append('file', params.file);
-
     const response = await fetch(
       `${EDGE_FUNCTIONS_URL}/admin-dashboard/upload-payout-receipt/${params.payoutId}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      }
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData },
     );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al subir comprobante');
-    }
-
-    return await response.json();
+    if (!response.ok) throw new Error((await response.text()) || 'Error al subir comprobante');
+    return response.json();
   },
 
+  // Get payout receipt signed URL (different base path — cannot use adminFetch)
   async getPayoutReceiptUrl(receiptPath: string): Promise<string> {
     const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-    searchParams.append('path', receiptPath);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/media-get-url?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Error al obtener URL del comprobante');
-    }
-
+    const url = new URL(`${EDGE_FUNCTIONS_URL}/media-get-url`);
+    url.searchParams.set('path', receiptPath);
+    const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error('Error al obtener URL del comprobante');
     const data = await response.json();
     return data.signedUrl || data.url;
   },
 
-  async getMonthlyPayouts(params: {
-    month: number;
-    year: number;
-    platform?: 'all' | 'mercadopago' | 'paypal_usd' | 'paypal_eur';
-  }): Promise<{
-    data: Array<{
-      reader_id: string;
-      display_name: string;
-      avatar_url: string | null;
-      sessions_count: number;
-      amount: number;
-      currency: Currency;
-      platform: 'mercadopago' | 'paypal';
-      period_start: string | null;
-      period_end: string | null;
-      payout_status: PayoutStatus | null;
-      payout_id: string | null;
-      processed_at: string | null;
-      receipt_url: string | null;
-    }>;
-    by_platform: {
-      mercadopago: {
-        currency: 'ARS';
-        payouts: Array<any>;
-        total_amount: number;
-        pending_count: number;
-        processed_count: number;
-      };
-      paypal_usd: {
-        currency: 'USD';
-        payouts: Array<any>;
-        total_amount: number;
-        pending_count: number;
-        processed_count: number;
-      };
-      paypal_eur: {
-        currency: 'EUR';
-        payouts: Array<any>;
-        total_amount: number;
-        pending_count: number;
-        processed_count: number;
-      };
-    };
-    summary: {
-      total_tarotistas: number;
-      pending_count: number;
-      processed_count: number;
-    };
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-
-    searchParams.append('month', params.month.toString());
-    searchParams.append('year', params.year.toString());
-    if (params.platform) searchParams.append('platform', params.platform);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/monthly-payouts?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener pagos mensuales');
-    }
-
-    return await response.json();
-  },
-
-  async getPayoutHistory(params: {
+  // Payout history
+  getPayoutHistory: (params: {
     readerId?: string;
     page?: number;
     limit?: number;
     currency?: Currency;
     platform?: 'all' | 'mercadopago' | 'paypal_usd' | 'paypal_eur';
-  }): Promise<{
-    data: Array<{
-      id: string;
-      reader_id: string;
-      display_name: string;
-      amount: number;
-      currency: Currency;
-      platform: 'mercadopago' | 'paypal';
-      sessions_count: number;
-      processed_at: string;
-      processed_by: string;
-      status: PayoutStatus;
-    }>;
-    by_platform: {
-      mercadopago: { total: number; count: number };
-      paypal_usd: { total: number; count: number };
-      paypal_eur: { total: number; count: number };
-    };
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-  }> {
+  }) =>
+    adminFetch<PayoutHistoryData>('GET', 'admin-dashboard/payout-history', {
+      params: {
+        readerId: params.readerId,
+        page: params.page,
+        limit: params.limit,
+        currency: params.currency,
+        platform: params.platform,
+      },
+      errorMessage: 'Error al obtener historial de pagos',
+    }),
+
+  // Export payouts CSV/XLSX (returns Blob — cannot use adminFetch)
+  async exportPayouts(params: { month: number; year: number; status?: 'pending' | 'processing' | 'paid' | 'all' }): Promise<Blob> {
     const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-
-    if (params.readerId) searchParams.append('readerId', params.readerId);
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-    if (params.currency) searchParams.append('currency', params.currency);
-    if (params.platform) searchParams.append('platform', params.platform);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/payout-history?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener historial de pagos');
-    }
-
-    return await response.json();
+    const url = new URL(`${EDGE_FUNCTIONS_URL}/admin-dashboard/export-payouts`);
+    url.searchParams.set('month', params.month.toString());
+    url.searchParams.set('year', params.year.toString());
+    if (params.status) url.searchParams.set('status', params.status);
+    const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error((await response.text()) || 'Error al exportar pagos');
+    return response.blob();
   },
 
-  async getReports(params: {
-    status?: ReportStatus | 'all';
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    data: Report[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
+  // Finances
+  getFinances: (params: { month?: number; year?: number; currency?: Currency }) =>
+    adminFetch<FinancesData>('GET', 'admin-dashboard/finances', {
+      params: { month: params.month, year: params.year, currency: params.currency },
+      unwrapData: true,
+      errorMessage: 'Error al obtener finanzas',
+    }),
 
-    if (params.status && params.status !== 'all') searchParams.append('status', params.status);
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
+  // Reports
+  getReports: (params: { status?: ReportStatus | 'all'; page?: number; limit?: number }) =>
+    adminFetch<{ data: Report[]; pagination: Pagination }>('GET', 'admin-dashboard/reports', {
+      params: {
+        status: params.status !== 'all' ? params.status : undefined,
+        page: params.page,
+        limit: params.limit,
+      },
+      errorMessage: 'Error al obtener reportes',
+    }),
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/reports?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
+  updateReportStatus: (params: { reportId: string; status: ReportStatus; resolution_notes?: string }) =>
+    adminFetch<unknown>('PATCH', `admin-dashboard/update-report/${params.reportId}`, {
+      body: { status: params.status, resolution_notes: params.resolution_notes },
+      errorMessage: 'Error al actualizar reporte',
+    }),
+
+  async getPendingReportsCount(): Promise<number> {
+    const data = await adminFetch<{ pending_count: number }>(
+      'GET', 'admin-dashboard/pending-reports-count', {
+        unwrapData: true,
+        errorMessage: 'Error al obtener conteo de reportes',
+      },
     );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener reportes');
-    }
-
-    return await response.json();
+    return data.pending_count;
   },
 
-  async updateReportStatus(params: {
-    reportId: string;
-    status: ReportStatus;
-    resolution_notes?: string;
-  }): Promise<any> {
-    const token = await getAuthToken();
+  // Flash questions
+  getFlashQuestions: (params: { page?: number; limit?: number; search?: string; status?: string }) =>
+    adminFetch<{ data: FlashQuestion[]; pagination: Pagination }>('GET', 'admin-dashboard/flash-questions', {
+      params: { page: params.page, limit: params.limit, search: params.search, status: params.status },
+      errorMessage: 'Error al obtener preguntas flash',
+    }),
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/update-report/${params.reportId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: params.status,
-          resolution_notes: params.resolution_notes,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al actualizar reporte');
-    }
-
-    return await response.json();
-  },
-
-  async getFlashQuestions(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    status?: string;
-  }): Promise<{
-    data: any[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      pages: number;
-    };
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-    if (params.search) searchParams.append('search', params.search);
-    if (params.status) searchParams.append('status', params.status);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/flash-questions?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener preguntas flash');
-    }
-
-    return await response.json();
-  },
-
+  // Delete/archive flash question (no response body)
   async deleteFlashQuestion(params: { questionId: string }): Promise<void> {
     const token = await getAuthToken();
     const response = await fetch(
       `${EDGE_FUNCTIONS_URL}/admin-dashboard/flash-questions/${params.questionId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
+      { method: 'DELETE', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
     );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al archivar pregunta');
-    }
+    if (!response.ok) throw new Error((await response.text()) || 'Error al archivar pregunta');
   },
 
-  async getConfiguration(): Promise<ConfigurationData> {
-    const token = await getAuthToken();
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/configuration`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+  // Configuration
+  getConfiguration: () =>
+    adminFetch<ConfigurationData>('GET', 'admin-dashboard/configuration', {
+      unwrapData: true,
+      errorMessage: 'Error al obtener configuración',
+    }),
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener configuración');
-    }
+  // Private consultations
+  getPrivateConsultations: (params: { page?: number; limit?: number; search?: string; status?: string; serviceKind?: string }) =>
+    adminFetch<{ data: PrivateConsultation[]; pagination: Pagination }>('GET', 'admin-dashboard/private-consultations', {
+      params: {
+        page: params.page,
+        limit: params.limit,
+        search: params.search,
+        status: params.status,
+        service_kind: params.serviceKind,
+      },
+      errorMessage: 'Error al obtener consultas privadas',
+    }),
 
-    const json = await response.json();
-    return json.data;
-  },
+  // Consultation detail (returns full { data: { session, messages } } envelope)
+  getConsultationDetail: (consultationId: string) =>
+    adminFetch<{ data: { session: PrivateConsultation & { [key: string]: unknown }; messages: ConsultationMessage[] } }>(
+      'GET', `admin-dashboard/consultation/${consultationId}/details`, {
+        errorMessage: 'Error al obtener detalle de consulta',
+      },
+    ),
 
-  async exportPayouts(params: {
-    month: number;
-    year: number;
-    status?: 'pending' | 'processing' | 'paid' | 'all';
-  }): Promise<Blob> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-    searchParams.append('month', params.month.toString());
-    searchParams.append('year', params.year.toString());
-    if (params.status) {
-      searchParams.append('status', params.status);
-    }
+  // Flash reports (reports linked to Flash questions)
+  getFlashReports: (params: { status?: string; page?: number; limit?: number }) =>
+    adminFetch<{ data: FlashReport[]; pagination: Pagination }>('GET', 'admin-dashboard/flash-reports', {
+      params: {
+        status: params.status !== 'all' ? params.status : undefined,
+        page: params.page,
+        limit: params.limit,
+      },
+      errorMessage: 'Error al obtener reportes Flash',
+    }),
 
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/export-payouts?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al exportar pagos');
-    }
-
-    return await response.blob();
-  },
-
-  async getPendingReportsCount(): Promise<number> {
-    const token = await getAuthToken();
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/pending-reports-count`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener conteo de reportes');
-    }
-
-    const json = await response.json();
-    return json.data.pending_count;
-  },
-
-  async updateTarotistaCurrency(params: {
-    tarotistaId: string;
-    preferredCurrency: Currency;
-  }): Promise<{ success: boolean; message: string; platform: 'mercadopago' | 'paypal' }> {
-    const token = await getAuthToken();
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/tarotista/${params.tarotistaId}/currency`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ preferred_currency: params.preferredCurrency }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al actualizar moneda del tarotista');
-    }
-
-    return await response.json();
-  },
-
-  async updateTarotistaStatus(params: {
-    tarotistaId: string;
-    status: 'active' | 'inactive';
-  }): Promise<{ success: boolean; message: string; new_status: string }> {
-    const token = await getAuthToken();
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/tarotista/${params.tarotistaId}/status`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: params.status }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al actualizar estado del tarotista');
-    }
-
-    return await response.json();
-  },
-
-  async getPrivateConsultations(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    status?: string;
-    serviceKind?: string;
-  }): Promise<{
-    data: any[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      pages: number;
-    };
-  }> {
-    const token = await getAuthToken();
-    const searchParams = new URLSearchParams();
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-    if (params.search) searchParams.append('search', params.search);
-    if (params.status) searchParams.append('status', params.status);
-    if (params.serviceKind) searchParams.append('service_kind', params.serviceKind);
-
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/private-consultations?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener consultas privadas');
-    }
-
-    return await response.json();
-  },
-
-  async getConsultationDetail(consultationId: string): Promise<{
-    data: {
-      session: any;
-      messages: any[];
-    };
-  }> {
-    const token = await getAuthToken();
-    const response = await fetch(
-      `${EDGE_FUNCTIONS_URL}/admin-dashboard/consultation/${consultationId}/details`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Error al obtener detalle de consulta');
-    }
-
-    return await response.json();
-  },
+  // Update the moderation status of a flash report
+  updateFlashReport: (params: {
+    reportId: string;
+    status: ReportStatus;
+    resolution_notes?: string;
+  }) =>
+    adminFetch<{ success: boolean }>('PATCH', `admin-dashboard/update-report/${params.reportId}`, {
+      body: { status: params.status, resolution_notes: params.resolution_notes },
+      errorMessage: 'Error al actualizar reporte Flash',
+    }),
 };

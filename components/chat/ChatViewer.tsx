@@ -2,9 +2,34 @@
 
 import { ChatBubble } from './ChatBubble';
 
+interface ChatParticipant {
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+interface ChatAttachment {
+  id: string;
+  media_kind: 'image' | 'audio';
+  url?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  body_text?: string;
+  created_at: string;
+  msg_type: string;
+  attachments: ChatAttachment[];
+  is_reader: boolean;
+}
+
+interface ChatSession {
+  reader?: ChatParticipant;
+  user?: ChatParticipant;
+}
+
 interface ChatViewerProps {
-  session: any;
-  messages: any[];
+  session: ChatSession;
+  messages: ChatMessage[];
 }
 
 export function ChatViewer({ session, messages }: ChatViewerProps) {

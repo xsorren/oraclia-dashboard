@@ -14,11 +14,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // DEBUG: Check env vars
-  console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY defined:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -142,7 +137,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-slate-500 text-sm mt-6">
-          © 2024 Oraclia. Todos los derechos reservados.
+          © {new Date().getFullYear()} Oraclia. Todos los derechos reservados.
         </p>
       </div>
     </div>

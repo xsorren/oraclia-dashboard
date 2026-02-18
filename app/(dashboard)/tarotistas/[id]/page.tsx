@@ -1,14 +1,19 @@
 'use client';
 
 import { ConfirmModal } from '@/components/common/ConfirmModal';
+import { CurrencySelector } from '@/components/common/CurrencySelector';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
-import { adminApi } from '@/lib/api/admin';
+import {
+    useProcessPayout,
+    useTarotistaDetail,
+    useUpdateTarotistaCurrency,
+    useUpdateTarotistaStatus,
+} from '@/lib/hooks/useTarotistas';
 import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
-import { getServiceName } from '@/lib/utils/services';
+import { formatServicePrice, FREE_SERVICE_KINDS, getServiceName } from '@/lib/utils/services';
 import type { Currency } from '@/types/database';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertCircle,
     ArrowLeft,
@@ -33,83 +38,57 @@ export default function TarotistaDetailPage() {
   const tarotistaId = params.id as string;
   const { toast } = useToast();
 
-  const queryClient = useQueryClient();
-  
   const [changeCurrencyModal, setChangeCurrencyModal] = useState<Currency | null>(null);
   const [statusModal, setStatusModal] = useState<'active' | 'inactive' | null>(null);
 
-  const { data: tarotista, isLoading } = useQuery({
-    queryKey: ['tarotista-detail', tarotistaId],
-    queryFn: () => adminApi.getTarotistaDetail({ id: tarotistaId }),
-    enabled: !!tarotistaId,
-    staleTime: 1000 * 60 * 2,
-  });
+  const { data: tarotista, isLoading } = useTarotistaDetail(tarotistaId);
 
-  const updateCurrencyMutation = useMutation({
-    mutationFn: (newCurrency: Currency) =>
-      adminApi.updateTarotistaCurrency({ tarotistaId, preferredCurrency: newCurrency }),
-    onSuccess: (data) => {
-      toast(`Moneda actualizada a ${changeCurrencyModal}. Plataforma: ${data.platform === 'mercadopago' ? 'MercadoPago' : 'PayPal'}`, 'success');
-      queryClient.invalidateQueries({ queryKey: ['tarotista-detail', tarotistaId] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'tarotistas'] });
-      setChangeCurrencyModal(null);
-    },
-    onError: (error: Error) => {
-      toast('Error al actualizar moneda: ' + error.message, 'error');
-      setChangeCurrencyModal(null);
-    },
-  });
-
-  const processPayoutMutation = useMutation({
-    mutationFn: (params: { readerId: string; currency: Currency }) =>
-      adminApi.processPayout(params),
-    onSuccess: () => {
-      toast('Pago procesado exitosamente', 'success');
-      queryClient.invalidateQueries({ queryKey: ['tarotista-detail', tarotistaId] });
-      queryClient.invalidateQueries({ queryKey: ['payouts'] });
-    },
-    onError: (error: Error) => {
-      toast('Error al procesar el pago: ' + error.message, 'error');
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: (newStatus: 'active' | 'inactive') =>
-      adminApi.updateTarotistaStatus({ tarotistaId, status: newStatus }),
-    onSuccess: (data) => {
-      toast(data.message, 'success');
-      queryClient.invalidateQueries({ queryKey: ['tarotista-detail', tarotistaId] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'tarotistas'] });
-      setStatusModal(null);
-    },
-    onError: (error: Error) => {
-      toast('Error: ' + error.message, 'error');
-      setStatusModal(null);
-    },
-  });
+  const updateCurrencyMutation = useUpdateTarotistaCurrency();
+  const updateStatusMutation = useUpdateTarotistaStatus();
+  const processPayoutMutation = useProcessPayout();
 
   const handleProcessPayout = () => {
     if (!tarotistaId || !tarotista) return;
     const currency = tarotista.preferred_currency || 'USD';
-    if (confirm(`¿Estás seguro de procesar el pago de ${formatCurrency(tarotista.pending_payout || 0, currency)} para este tarotista vía ${currency === 'ARS' ? 'MercadoPago' : 'PayPal'}?`)) {
-      processPayoutMutation.mutate({
-        readerId: tarotistaId,
-        currency: currency,
-      });
+    const amount = tarotista.pending_payout || 0;
+
+    if (amount <= 0) {
+      toast('No hay monto pendiente para pagar', 'warning');
+      return;
+    }
+
+    if (confirm(`¿Estás seguro de procesar el pago de ${formatCurrency(amount, currency)} para este tarotista vía ${currency === 'ARS' ? 'MercadoPago' : 'PayPal'}?\n\nEsta acción marcará las consultas como pagadas y generará un registro de pago completado.`)) {
+      processPayoutMutation.mutate(
+        { readerId: tarotistaId, currency },
+        {
+          onSuccess: () => toast('Pago procesado exitosamente', 'success'),
+          onError: (error: Error) => toast('Error al procesar el pago: ' + error.message, 'error'),
+        },
+      );
     }
   };
 
-  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCurrency = e.target.value as Currency;
+  const handleCurrencyChange = (newCurrency: Currency) => {
     if (newCurrency !== tarotista?.preferred_currency) {
       setChangeCurrencyModal(newCurrency);
     }
   };
 
   const confirmCurrencyChange = () => {
-    if (changeCurrencyModal) {
-      updateCurrencyMutation.mutate(changeCurrencyModal);
-    }
+    if (!changeCurrencyModal) return;
+    updateCurrencyMutation.mutate(
+      { tarotistaId, preferredCurrency: changeCurrencyModal },
+      {
+        onSuccess: (data) => {
+          toast(`Moneda actualizada a ${changeCurrencyModal}. Plataforma: ${data.platform === 'mercadopago' ? 'MercadoPago' : 'PayPal'}`, 'success');
+          setChangeCurrencyModal(null);
+        },
+        onError: (error: Error) => {
+          toast('Error al actualizar moneda: ' + error.message, 'error');
+          setChangeCurrencyModal(null);
+        },
+      },
+    );
   };
 
   const handleToggleStatus = () => {
@@ -119,9 +98,20 @@ export default function TarotistaDetailPage() {
   };
 
   const confirmStatusChange = () => {
-    if (statusModal) {
-      updateStatusMutation.mutate(statusModal);
-    }
+    if (!statusModal) return;
+    updateStatusMutation.mutate(
+      { tarotistaId, status: statusModal },
+      {
+        onSuccess: (data) => {
+          toast(data.message, 'success');
+          setStatusModal(null);
+        },
+        onError: (error: Error) => {
+          toast('Error: ' + error.message, 'error');
+          setStatusModal(null);
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -283,20 +273,15 @@ export default function TarotistaDetailPage() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
               <label className="text-sm text-slate-400">Cambiar moneda:</label>
-              <select
+              <CurrencySelector
                 value={tarotista.preferred_currency}
                 onChange={handleCurrencyChange}
-                disabled={updateCurrencyMutation.isPending}
-                className={`flex-1 sm:flex-none px-3 py-2 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 disabled:opacity-50 ${
-                  tarotista.preferred_currency === 'ARS' 
-                    ? 'bg-sky-900/50 border-sky-700 focus:ring-sky-500' 
+                className={`flex-1 sm:flex-none disabled:opacity-50 ${
+                  tarotista.preferred_currency === 'ARS'
+                    ? 'bg-sky-900/50 border-sky-700 focus:ring-sky-500'
                     : 'bg-blue-900/50 border-blue-700 focus:ring-blue-500'
                 }`}
-              >
-                <option value="ARS">ARS (MercadoPago)</option>
-                <option value="USD">USD (PayPal)</option>
-                <option value="EUR">EUR (PayPal)</option>
-              </select>
+              />
             </div>
           </div>
         </div>
@@ -374,9 +359,11 @@ export default function TarotistaDetailPage() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="text-sm sm:text-base text-purple-400 font-semibold">
-                        {formatCurrency(consultation.net_price, tarotista.preferred_currency)}
+                        {formatServicePrice(consultation.net_price, tarotista.preferred_currency, consultation.service_kind, formatCurrency)}
                       </p>
-                      <p className="text-xs text-slate-500">{tarotista.preferred_currency}</p>
+                      <p className="text-xs text-slate-500">
+                        {FREE_SERVICE_KINDS.has(consultation.service_kind) ? '—' : tarotista.preferred_currency}
+                      </p>
                     </div>
                   </div>
                 ))}

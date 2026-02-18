@@ -1,20 +1,19 @@
 'use client';
 
 import { EmptyState } from '@/components/common/EmptyState';
+import { Pagination } from '@/components/common/Pagination';
 import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
-import { adminApi } from '@/lib/api/admin';
+import { usePayoutHistory } from '@/lib/hooks/usePagos';
 import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
 import type { PayoutStatus } from '@/types/database';
-import { useQuery } from '@tanstack/react-query';
 import {
     ArrowLeft,
     Calendar,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     CreditCard,
     Download,
@@ -39,15 +38,11 @@ export default function HistorialPagosPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['admin', 'payout-history', page, limit, platformFilter, readerIdFilter],
-    queryFn: () => adminApi.getPayoutHistory({ 
-      page, 
-      limit, 
-      platform: platformFilter,
-      readerId: readerIdFilter || undefined,
-    }),
-    staleTime: 1000 * 60 * 5,
+  const { data, isLoading, refetch } = usePayoutHistory({
+    page,
+    limit,
+    platform: platformFilter,
+    readerId: readerIdFilter,
   });
 
   const getStatusBadge = (status: PayoutStatus) => {
@@ -106,7 +101,7 @@ export default function HistorialPagosPage() {
     );
   };
 
-  const totalPages = data?.pagination.pages || 0;
+  const totalPages = data?.pagination.pages ?? 0;
   const byPlatform = data?.by_platform;
 
   return (
@@ -263,7 +258,7 @@ export default function HistorialPagosPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg p-4">
+        <SectionCard className="p-4" padding="none">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-wrap">
               {/* Filter Indicator */}
@@ -313,13 +308,13 @@ export default function HistorialPagosPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         {/* Payouts Table */}
         {isLoading ? (
           <TableSkeleton columns={7} rows={10} />
         ) : (
-          <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+          <SectionCard padding="none" className="overflow-hidden">
             {!data || !data.data || data.data.length === 0 ? (
               <EmptyState 
                 icon={Calendar}
@@ -383,69 +378,17 @@ export default function HistorialPagosPage() {
                 </ResponsiveTable>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="px-6 py-4 bg-slate-800/30 border-t border-slate-700">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="text-sm text-slate-400">
-                        Mostrando <span className="font-medium text-white">{(page - 1) * limit + 1}</span> a{' '}
-                        <span className="font-medium text-white">
-                          {Math.min(page * limit, data.pagination.total)}
-                        </span>{' '}
-                        de <span className="font-medium text-white">{data.pagination.total}</span> pagos
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
-                          disabled={page === 1}
-                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft className="w-5 h-5" />
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum: number;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (page <= 3) {
-                              pageNum = i + 1;
-                            } else if (page >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = page - 2 + i;
-                            }
-
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => setPage(pageNum)}
-                                className={`min-w-[2.5rem] px-3 py-2 text-sm font-medium rounded-lg transition ${
-                                  page === pageNum
-                                    ? 'bg-purple-500 text-white'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                          disabled={page === totalPages}
-                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <Pagination
+                  page={page}
+                  pages={totalPages}
+                  total={data.pagination.total}
+                  limit={limit}
+                  onPageChange={setPage}
+                  itemLabel="pagos"
+                />
               </>
             )}
-          </div>
+          </SectionCard>
         )}
       </div>
     </>

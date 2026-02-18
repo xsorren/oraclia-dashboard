@@ -2,10 +2,12 @@
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useConfiguration } from '@/lib/hooks/useConfiguration';
 import { formatCurrency } from '@/lib/utils/currency';
+import { formatServicePrice } from '@/lib/utils/services';
 import { Settings, Tag } from 'lucide-react';
 
 export default function ConfiguracionPage() {
@@ -41,7 +43,7 @@ export default function ConfiguracionPage() {
                     {isLoading ? (
                         <TableSkeleton columns={5} rows={5} />
                     ) : (
-                        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-lg overflow-hidden">
+                        <SectionCard padding="none" className="overflow-hidden">
                             {!config?.services || config.services.length === 0 ? (
                                 <EmptyState
                                     icon={Settings}
@@ -62,13 +64,13 @@ export default function ConfiguracionPage() {
                                                 {service.kind}
                                             </td>
                                             <td className="px-6 py-4 text-slate-300">
-                                                {formatCurrency(service.prices?.USD || 0, 'USD')}
+                                                {formatServicePrice(service.prices?.USD || 0, 'USD', service.slug, formatCurrency)}
                                             </td>
                                             <td className="px-6 py-4 text-slate-300">
-                                                {formatCurrency(service.prices?.ARS || 0, 'ARS')}
+                                                {formatServicePrice(service.prices?.ARS || 0, 'ARS', service.slug, formatCurrency)}
                                             </td>
                                             <td className="px-6 py-4 text-slate-300">
-                                                {formatCurrency(service.prices?.EUR || 0, 'EUR')}
+                                                {formatServicePrice(service.prices?.EUR || 0, 'EUR', service.slug, formatCurrency)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 {service.is_active ? (
@@ -85,7 +87,7 @@ export default function ConfiguracionPage() {
                                     ))}
                                 </ResponsiveTable>
                             )}
-                        </div>
+                        </SectionCard>
                     )}
                 </div>
             </div>
