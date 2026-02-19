@@ -587,7 +587,16 @@ export const adminApi = {
       `${EDGE_FUNCTIONS_URL}/admin-dashboard/flash-questions/${params.questionId}`,
       { method: 'DELETE', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
     );
-    if (!response.ok) throw new Error((await response.text()) || 'Error al archivar pregunta');
+    if (!response.ok) {
+      const text = await response.text();
+      // Try to extract the human-readable message from the JSON error envelope
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json?.error?.message || json?.message || text || 'Error al archivar pregunta');
+      } catch {
+        throw new Error(text || 'Error al archivar pregunta');
+      }
+    }
   },
 
   // Configuration
