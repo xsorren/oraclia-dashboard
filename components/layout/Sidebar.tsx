@@ -4,6 +4,7 @@ import { usePendingReportsCount } from '@/lib/hooks/useReports';
 import { cn } from '@/lib/utils/cn';
 import {
     AlertTriangle,
+    Bell,
     DollarSign,
     Flag,
     LayoutDashboard,
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Tarotistas', href: '/tarotistas', icon: Users },
   { name: 'Usuarios', href: '/usuarios', icon: User },
   { name: 'Pagos', href: '/pagos', icon: DollarSign },
+  { name: 'Notificaciones', href: '/notificaciones', icon: Bell },
   { name: 'Reportes', href: '/reportes', icon: AlertTriangle, showBadge: true },
   { name: 'Flash', href: '/consultas', icon: Zap },
   { name: 'Privadas', href: '/consultas/privadas', icon: MessageCircle },

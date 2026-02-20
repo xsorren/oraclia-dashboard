@@ -333,7 +333,7 @@ export default function FlashReportesPage() {
                                 title="Sin reportes"
                                 description={
                                     statusFilter === 'all'
-                                        ? 'AÃºn no hay reportes de preguntas Flash.'
+                                        ? 'Aún no hay reportes de preguntas Flash.'
                                         : `No hay reportes con estado "${reportStatusConfig[statusFilter as ReportStatus]?.label ?? statusFilter}".`
                                 }
                             />

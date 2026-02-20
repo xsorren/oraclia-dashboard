@@ -371,6 +371,31 @@ export interface PayoutHistoryData {
   pagination: Pagination;
 }
 
+export type NotificationsAudience = 'all' | 'users' | 'tarotistas';
+
+export interface NotificationsBroadcastParams {
+  title: string;
+  body: string;
+  topic?: string;
+  data?: Record<string, unknown>;
+  audience?: NotificationsAudience;
+  batch_size?: number;
+}
+
+export interface NotificationsBroadcastResult {
+  campaign_id: string;
+  audience: NotificationsAudience;
+  topic: string;
+  recipients_total: number;
+  batches_total: number;
+  sent: number;
+  failed: number;
+  failed_batches: number;
+  errors: string[];
+  started_at: string;
+  finished_at: string;
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -604,6 +629,21 @@ export const adminApi = {
     adminFetch<ConfigurationData>('GET', 'admin-dashboard/configuration', {
       unwrapData: true,
       errorMessage: 'Error al obtener configuración',
+    }),
+
+  // Broadcast notifications
+  sendNotificationsBroadcast: (params: NotificationsBroadcastParams) =>
+    adminFetch<NotificationsBroadcastResult>('POST', 'admin-dashboard/notifications-broadcast', {
+      body: {
+        title: params.title,
+        body: params.body,
+        topic: params.topic,
+        data: params.data,
+        audience: params.audience ?? 'all',
+        batch_size: params.batch_size,
+      },
+      unwrapData: true,
+      errorMessage: 'Error al enviar notificaciones',
     }),
 
   // Private consultations
