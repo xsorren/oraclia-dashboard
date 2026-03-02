@@ -3,17 +3,17 @@
 import { usePendingReportsCount } from '@/lib/hooks/useReports';
 import { cn } from '@/lib/utils/cn';
 import {
-    AlertTriangle,
-    Bell,
-    DollarSign,
-    Flag,
-    LayoutDashboard,
-    LogOut,
-    MessageCircle,
-    Sparkles,
-    User,
-    Users,
-    Zap
+  AlertTriangle,
+  Bell,
+  DollarSign,
+  Flag,
+  LayoutDashboard,
+  LogOut,
+  MessageCircle,
+  Sparkles,
+  User,
+  Users,
+  Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -43,8 +43,11 @@ export function Sidebar({ onLogout, onNavigate }: SidebarProps) {
    * Determine if a nav item is active.
    * `/` matches only the exact root; all other paths match any sub-route.
    */
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    if (href === '/consultas') return pathname === '/consultas';
+    return pathname.startsWith(href);
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 shadow-2xl">
