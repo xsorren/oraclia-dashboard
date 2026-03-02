@@ -1,0 +1,99 @@
+﻿
+> web-dashboard@0.1.0 build
+> next build
+
+npm :  ÔÜá Warning: Next.js 
+inferred your workspace root, 
+but it may not be correct.
+En línea: 1 Carácter: 1
++ npm run build > 
+build_output.log 2>&1 ; 
+Get-Content build_output.log  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo          : No 
+   tSpecified: ( ÔÜá Warning: N  
+  ...not be correct.:String) [   
+ ], RemoteException
+    + FullyQualifiedErrorId : Na 
+   tiveCommandError
+ 
+ We detected multiple lockfiles 
+and selected the directory of 
+C:\oraclia\package-lock.json as 
+the root directory.
+ To silence this warning, set 
+`outputFileTracingRoot` in your 
+Next.js config, or consider 
+removing one of the lockfiles if 
+it's not needed.
+   See https://nextjs.org/docs/ap
+p/api-reference/config/next-confi
+g-js/output#caveats for more 
+information.
+ Detected additional lockfiles: 
+   * C:\oraclia\web-dashboard\pac
+kage-lock.json
+
+   Ôû▓ Next.js 15.5.9
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 8.0s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./app/(dashboard)/consultas/priva
+das/page.tsx:373:21
+Type error: Type 
+'ConsultationMessage[]' is not 
+assignable to type 
+'ChatMessage[]'.
+  Type 'ConsultationMessage' is 
+not assignable to type 
+'ChatMessage'.
+    Types of property 
+'attachments' are incompatible.
+      Type '{ id: string; 
+media_kind: "image" | "audio" | 
+"video"; url: string | null; 
+}[]' is not assignable to type 
+'ChatAttachment[]'.
+        Type '{ id: string; 
+media_kind: "image" | "audio" | 
+"video"; url: string | null; }' 
+is not assignable to type 
+'ChatAttachment'.
+          Types of property 
+'media_kind' are incompatible.
+            Type '"image" | 
+"audio" | "video"' is not 
+assignable to type '"image" | 
+"audio"'.
+              Type '"video"' is 
+not assignable to type '"image" 
+| "audio"'.
+
+[0m [90m 371 |[39m            
+     
+[33m<[39m[33mChatViewer[39m 
+ [90m 372 |[39m                
+     session[33m=[39m{detailDat
+a[33m.[39mdata[33m.[39msessio
+n}
+[31m[1m>[22m[39m[90m 373 
+|[39m                     messag
+es[33m=[39m{detailData[33m.[3
+9mdata[33m.[39mmessages}
+ [90m     |[39m                
+     [31m[1m^[22m[39m
+ [90m 374 |[39m                
+ [33m/[39m[33m>[39m
+ [90m 375 |[39m             [3
+3m<[39m[33m/[39m[33mdiv[39m
+[33m>[39m
+ [90m 376 |[39m         ) 
+[33m:[39m ([0m
+Next.js build worker exited with 
+code: 1 and signal: null
+

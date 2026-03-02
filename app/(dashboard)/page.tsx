@@ -15,10 +15,10 @@ import { useState } from 'react';
 
 export default function DashboardPage() {
   const [currency, setCurrency] = useState<Currency>('USD');
-  
+
   const { data: overview, isLoading: isLoadingOverview, refetch: refetchOverview } = useOverview({ currency });
   const { data: pendingPayouts, isLoading: isLoadingPayouts } = usePendingPayouts({ currency });
-  
+
   // Fetch data for all currencies to show platform summary
   const { data: overviewARS } = useOverview({ currency: 'ARS' });
   const { data: overviewUSD } = useOverview({ currency: 'USD' });
@@ -26,12 +26,12 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header 
-        title="Dashboard" 
+      <Header
+        title="Dashboard"
         subtitle="Vista general del negocio"
         breadcrumbs={[{ label: 'Inicio' }]}
       />
-      
+
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-[2000px] mx-auto">
         {/* Currency Selector & Refresh */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -43,7 +43,7 @@ export default function DashboardPage() {
               className="flex-1 sm:flex-none"
             />
           </div>
-          
+
           <button
             onClick={() => refetchOverview()}
             disabled={isLoadingOverview}
@@ -218,11 +218,11 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="w-full bg-slate-800 rounded-full h-2">
-                    <div 
-                      className="bg-amber-500 h-2 rounded-full" 
-                      style={{ 
-                        width: `${Math.min((overview.tarotista_expenses / overview.gross_revenue) * 100, 100)}%` 
-                      }} 
+                    <div
+                      className="bg-amber-500 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min((overview.tarotista_expenses / overview.gross_revenue) * 100, 100)}%`
+                      }}
                     />
                   </div>
                 </div>
@@ -243,21 +243,60 @@ export default function DashboardPage() {
                 </div>
 
                 {pendingPayouts && pendingPayouts.count > 0 && (
-                  <div className="p-4 bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-slate-400 text-sm">Pagos Pendientes</p>
-                        <p className="text-orange-400 font-semibold text-lg mt-1">
-                          {pendingPayouts.count} {pendingPayouts.count === 1 ? 'tarotista' : 'tarotistas'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-slate-400 text-xs">Total pendiente</p>
-                        <p className="text-orange-400 font-semibold text-lg mt-1">
-                          {formatCurrency(pendingPayouts.total_pending, currency)}
-                        </p>
+                  <div className="space-y-2">
+                    {/* Standard Pending Payouts Card */}
+                    <div className="p-4 bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-400 text-sm">Pagos Pendientes</p>
+                          <p className="text-orange-400 font-semibold text-lg mt-1">
+                            {pendingPayouts.count} {pendingPayouts.count === 1 ? 'tarotista' : 'tarotistas'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-slate-400 text-xs">Total pendiente</p>
+                          <p className="text-orange-400 font-semibold text-lg mt-1">
+                            {formatCurrency(pendingPayouts.total_pending, currency)}
+                          </p>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Warning for old pending payouts */}
+                    {(() => {
+                      const now = new Date();
+                      const currentMonth = now.getMonth();
+                      const currentYear = now.getFullYear();
+
+                      const hasOldPayouts = pendingPayouts.data?.some(payout => {
+                        if (!payout.period_start) return false;
+                        const payoutDate = new Date(payout.period_start);
+                        // Is it older than the current month of the current year?
+                        return payoutDate.getFullYear() < currentYear ||
+                          (payoutDate.getFullYear() === currentYear && payoutDate.getMonth() < currentMonth);
+                      });
+
+                      if (hasOldPayouts) {
+                        return (
+                          <div className="p-3 mt-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+                            <i className="lucide-alert-triangle text-red-400 mt-0.5">⚠️</i>
+                            <div>
+                              <p className="text-red-400 font-medium text-sm">Atención: Pagos Atrasados</p>
+                              <p className="text-red-300/80 text-xs mt-1">
+                                Existen tarotistas con consultas impagas de meses anteriores. Por favor, revisa el módulo de pagos.
+                              </p>
+                            </div>
+                            <Link
+                              href="/pagos/mensuales"
+                              className="ml-auto flex-shrink-0 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded text-xs font-medium transition"
+                            >
+                              Revisar
+                            </Link>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>

@@ -13,21 +13,21 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
 import type { Currency, PayoutStatus } from '@/types/database';
 import {
-    Calendar,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    CreditCard,
-    Download,
-    Eye,
-    FileText,
-    RefreshCw,
-    TrendingUp,
-    Upload,
-    User,
-    Wallet,
-    XCircle
+  Calendar,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  Download,
+  Eye,
+  FileText,
+  RefreshCw,
+  TrendingUp,
+  Upload,
+  User,
+  Wallet,
+  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -60,15 +60,16 @@ export default function PagosMensualesPage() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
-  
+
   // State for modals
   const [payoutToProcess, setPayoutToProcess] = useState<MonthlyPayoutData | null>(null);
   const [statusToUpdate, setStatusToUpdate] = useState<{ payoutId: string; status: PayoutStatus } | null>(null);
   const [payoutForReceipt, setPayoutForReceipt] = useState<string | null>(null);
+  const [payoutForReceiptReplace, setPayoutForReceiptReplace] = useState<MonthlyPayoutData | null>(null);
   const [viewReceiptUrl, setViewReceiptUrl] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { toast } = useToast();
 
   const { data, isLoading, refetch } = useMonthlyPayouts({
@@ -89,7 +90,7 @@ export default function PagosMensualesPage() {
         year: selectedYear,
         status: 'all'
       });
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -98,7 +99,7 @@ export default function PagosMensualesPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast('Archivo CSV descargado correctamente', 'success');
     } catch (error: any) {
       toast('Error al exportar: ' + error.message, 'error');
@@ -107,9 +108,27 @@ export default function PagosMensualesPage() {
     }
   };
 
-  const handleUploadReceipt = (payoutId: string) => {
+  const handleUploadReceipt = (payout: MonthlyPayoutData) => {
+    if (!payout.payout_id) return;
+
+    // If it's already completed and has a receipt, show confirmation first
+    if (payout.payout_status === 'completed' && payout.receipt_url) {
+      setPayoutForReceiptReplace(payout);
+    } else {
+      triggerFileInput(payout.payout_id);
+    }
+  };
+
+  const triggerFileInput = (payoutId: string) => {
     setPayoutForReceipt(payoutId);
     setTimeout(() => fileInputRef.current?.click(), 100);
+  };
+
+  const confirmReplaceReceipt = () => {
+    if (payoutForReceiptReplace?.payout_id) {
+      triggerFileInput(payoutForReceiptReplace.payout_id);
+      setPayoutForReceiptReplace(null);
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +185,7 @@ export default function PagosMensualesPage() {
   const handleUpdateStatus = (payoutId: string, newStatus: PayoutStatus) => {
     setStatusToUpdate({ payoutId, status: newStatus });
   };
-  
+
   const cancelUpdateStatus = () => {
     setStatusToUpdate(null);
   };
@@ -270,8 +289,8 @@ export default function PagosMensualesPage() {
 
   return (
     <>
-      <Header 
-        title="Pagos Mensuales" 
+      <Header
+        title="Pagos Mensuales"
         subtitle="Gestión de pagos a tarotistas por plataforma"
         breadcrumbs={[
           { label: 'Inicio', href: '/' },
@@ -279,7 +298,7 @@ export default function PagosMensualesPage() {
           { label: 'Mensuales' }
         ]}
       />
-      
+
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[2000px] mx-auto">
         {/* Month/Year Selector */}
         <SectionCard className="p-4 sm:p-6" padding="none">
@@ -341,146 +360,143 @@ export default function PagosMensualesPage() {
             </div>
           </div>
 
-        {/* Platform Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* MercadoPago Card */}
-          <button
-            onClick={() => setPlatformFilter(platformFilter === 'mercadopago' ? 'all' : 'mercadopago')}
-            className={`text-left bg-gradient-to-br from-sky-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${
-              platformFilter === 'mercadopago' 
-                ? 'border-sky-500 ring-2 ring-sky-500/20' 
+          {/* Platform Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* MercadoPago Card */}
+            <button
+              onClick={() => setPlatformFilter(platformFilter === 'mercadopago' ? 'all' : 'mercadopago')}
+              className={`text-left bg-gradient-to-br from-sky-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${platformFilter === 'mercadopago'
+                ? 'border-sky-500 ring-2 ring-sky-500/20'
                 : 'border-sky-800/50 hover:border-sky-600/50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-sky-500/20 rounded-lg">
-                  <Wallet className="w-5 h-5 text-sky-400" />
+                }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-sky-500/20 rounded-lg">
+                    <Wallet className="w-5 h-5 text-sky-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">MercadoPago</h3>
+                    <p className="text-xs text-sky-300/70">ARS</p>
+                  </div>
+                </div>
+                {platformFilter === 'mercadopago' && (
+                  <span className="text-xs text-sky-400 font-medium">Filtrado</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-400">Total</p>
+                  <p className="text-lg font-bold text-white">
+                    {isLoading ? '...' : formatCurrency(byPlatform?.mercadopago?.total_amount || 0, 'ARS')}
+                  </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">MercadoPago</h3>
-                  <p className="text-xs text-sky-300/70">ARS</p>
+                  <p className="text-xs text-slate-400">Tarotistas</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold text-white">
+                      {isLoading ? '...' : byPlatform?.mercadopago?.payouts?.length || 0}
+                    </p>
+                    {(byPlatform?.mercadopago?.pending_count || 0) > 0 && (
+                      <span className="text-xs text-orange-400">
+                        ({byPlatform?.mercadopago?.pending_count} pend.)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              {platformFilter === 'mercadopago' && (
-                <span className="text-xs text-sky-400 font-medium">Filtrado</span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400">Total</p>
-                <p className="text-lg font-bold text-white">
-                  {isLoading ? '...' : formatCurrency(byPlatform?.mercadopago?.total_amount || 0, 'ARS')}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">Tarotistas</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-bold text-white">
-                    {isLoading ? '...' : byPlatform?.mercadopago?.payouts?.length || 0}
-                  </p>
-                  {(byPlatform?.mercadopago?.pending_count || 0) > 0 && (
-                    <span className="text-xs text-orange-400">
-                      ({byPlatform?.mercadopago?.pending_count} pend.)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </button>
+            </button>
 
-          {/* PayPal USD Card */}
-          <button
-            onClick={() => setPlatformFilter(platformFilter === 'paypal_usd' ? 'all' : 'paypal_usd')}
-            className={`text-left bg-gradient-to-br from-blue-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${
-              platformFilter === 'paypal_usd' 
-                ? 'border-blue-500 ring-2 ring-blue-500/20' 
+            {/* PayPal USD Card */}
+            <button
+              onClick={() => setPlatformFilter(platformFilter === 'paypal_usd' ? 'all' : 'paypal_usd')}
+              className={`text-left bg-gradient-to-br from-blue-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${platformFilter === 'paypal_usd'
+                ? 'border-blue-500 ring-2 ring-blue-500/20'
                 : 'border-blue-800/50 hover:border-blue-600/50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-blue-400" />
+                }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <CreditCard className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">PayPal</h3>
+                    <p className="text-xs text-blue-300/70">USD</p>
+                  </div>
+                </div>
+                {platformFilter === 'paypal_usd' && (
+                  <span className="text-xs text-blue-400 font-medium">Filtrado</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-400">Total</p>
+                  <p className="text-lg font-bold text-white">
+                    {isLoading ? '...' : formatCurrency(byPlatform?.paypal_usd?.total_amount || 0, 'USD')}
+                  </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">PayPal</h3>
-                  <p className="text-xs text-blue-300/70">USD</p>
+                  <p className="text-xs text-slate-400">Tarotistas</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold text-white">
+                      {isLoading ? '...' : byPlatform?.paypal_usd?.payouts?.length || 0}
+                    </p>
+                    {(byPlatform?.paypal_usd?.pending_count || 0) > 0 && (
+                      <span className="text-xs text-orange-400">
+                        ({byPlatform?.paypal_usd?.pending_count} pend.)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              {platformFilter === 'paypal_usd' && (
-                <span className="text-xs text-blue-400 font-medium">Filtrado</span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400">Total</p>
-                <p className="text-lg font-bold text-white">
-                  {isLoading ? '...' : formatCurrency(byPlatform?.paypal_usd?.total_amount || 0, 'USD')}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">Tarotistas</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-bold text-white">
-                    {isLoading ? '...' : byPlatform?.paypal_usd?.payouts?.length || 0}
-                  </p>
-                  {(byPlatform?.paypal_usd?.pending_count || 0) > 0 && (
-                    <span className="text-xs text-orange-400">
-                      ({byPlatform?.paypal_usd?.pending_count} pend.)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </button>
+            </button>
 
-          {/* PayPal EUR Card */}
-          <button
-            onClick={() => setPlatformFilter(platformFilter === 'paypal_eur' ? 'all' : 'paypal_eur')}
-            className={`text-left bg-gradient-to-br from-indigo-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${
-              platformFilter === 'paypal_eur' 
-                ? 'border-indigo-500 ring-2 ring-indigo-500/20' 
+            {/* PayPal EUR Card */}
+            <button
+              onClick={() => setPlatformFilter(platformFilter === 'paypal_eur' ? 'all' : 'paypal_eur')}
+              className={`text-left bg-gradient-to-br from-indigo-900/30 to-slate-900/50 backdrop-blur-sm border rounded-xl p-5 transition-all ${platformFilter === 'paypal_eur'
+                ? 'border-indigo-500 ring-2 ring-indigo-500/20'
                 : 'border-indigo-800/50 hover:border-indigo-600/50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-500/20 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-indigo-400" />
+                }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg">
+                    <CreditCard className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">PayPal</h3>
+                    <p className="text-xs text-indigo-300/70">EUR</p>
+                  </div>
+                </div>
+                {platformFilter === 'paypal_eur' && (
+                  <span className="text-xs text-indigo-400 font-medium">Filtrado</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-400">Total</p>
+                  <p className="text-lg font-bold text-white">
+                    {isLoading ? '...' : formatCurrency(byPlatform?.paypal_eur?.total_amount || 0, 'EUR')}
+                  </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">PayPal</h3>
-                  <p className="text-xs text-indigo-300/70">EUR</p>
+                  <p className="text-xs text-slate-400">Tarotistas</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold text-white">
+                      {isLoading ? '...' : byPlatform?.paypal_eur?.payouts?.length || 0}
+                    </p>
+                    {(byPlatform?.paypal_eur?.pending_count || 0) > 0 && (
+                      <span className="text-xs text-orange-400">
+                        ({byPlatform?.paypal_eur?.pending_count} pend.)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              {platformFilter === 'paypal_eur' && (
-                <span className="text-xs text-indigo-400 font-medium">Filtrado</span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400">Total</p>
-                <p className="text-lg font-bold text-white">
-                  {isLoading ? '...' : formatCurrency(byPlatform?.paypal_eur?.total_amount || 0, 'EUR')}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400">Tarotistas</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-bold text-white">
-                    {isLoading ? '...' : byPlatform?.paypal_eur?.payouts?.length || 0}
-                  </p>
-                  {(byPlatform?.paypal_eur?.pending_count || 0) > 0 && (
-                    <span className="text-xs text-orange-400">
-                      ({byPlatform?.paypal_eur?.pending_count} pend.)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
+            </button>
+          </div>
         </SectionCard>
 
         {/* Summary Stats */}
@@ -520,14 +536,13 @@ export default function PagosMensualesPage() {
         {platformFilter !== 'all' && (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-slate-400">Mostrando:</span>
-            <span className={`font-medium ${
-              platformFilter === 'mercadopago' ? 'text-sky-400' :
+            <span className={`font-medium ${platformFilter === 'mercadopago' ? 'text-sky-400' :
               platformFilter === 'paypal_usd' ? 'text-blue-400' : 'text-indigo-400'
-            }`}>
+              }`}>
               {platformFilter === 'mercadopago' ? 'MercadoPago (ARS)' :
-               platformFilter === 'paypal_usd' ? 'PayPal (USD)' : 'PayPal (EUR)'}
+                platformFilter === 'paypal_usd' ? 'PayPal (USD)' : 'PayPal (EUR)'}
             </span>
-            <button 
+            <button
               onClick={() => setPlatformFilter('all')}
               className="text-slate-500 hover:text-white transition"
             >
@@ -542,11 +557,11 @@ export default function PagosMensualesPage() {
         ) : (
           <SectionCard padding="none" className="overflow-hidden">
             {!data || !data.data || data.data.length === 0 ? (
-              <EmptyState 
+              <EmptyState
                 icon={TrendingUp}
                 title={`No hay pagos pendientes en ${MONTHS[selectedMonth - 1]} ${selectedYear}`}
-                description={platformFilter !== 'all' 
-                  ? 'No hay tarotistas con esta moneda para este período' 
+                description={platformFilter !== 'all'
+                  ? 'No hay tarotistas con esta moneda para este período'
                   : 'No se registraron consultas completadas en este período'}
               />
             ) : (
@@ -558,8 +573,8 @@ export default function PagosMensualesPage() {
                       <MobileCardHeader>
                         <div className="flex items-center gap-3 min-w-0">
                           {payout.avatar_url ? (
-                            <img 
-                              src={payout.avatar_url} 
+                            <img
+                              src={payout.avatar_url}
                               alt={payout.display_name}
                               className="w-10 h-10 rounded-full object-cover shrink-0"
                             />
@@ -582,18 +597,18 @@ export default function PagosMensualesPage() {
                         </div>
                         {getStatusBadge(payout.payout_status)}
                       </MobileCardHeader>
-                      
+
                       <div className="grid grid-cols-2 gap-2">
-                        <MobileCardField 
-                          label="Plataforma" 
-                          value={getPlatformBadge(payout.currency)} 
+                        <MobileCardField
+                          label="Plataforma"
+                          value={getPlatformBadge(payout.currency)}
                         />
-                        <MobileCardField 
-                          label="Monto" 
-                          value={<span className="text-lg font-semibold">{formatCurrency(payout.amount, payout.currency)}</span>} 
+                        <MobileCardField
+                          label="Monto"
+                          value={<span className="text-lg font-semibold">{formatCurrency(payout.amount, payout.currency)}</span>}
                         />
                       </div>
-                      
+
                       <MobileCardActions>
                         {!payout.payout_status ? (
                           <button
@@ -625,7 +640,7 @@ export default function PagosMensualesPage() {
                             )}
                             {payout.payout_id && (
                               <button
-                                onClick={() => handleUploadReceipt(payout.payout_id!)}
+                                onClick={() => handleUploadReceipt(payout)}
                                 disabled={uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id}
                                 className="flex-1 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-sm transition disabled:opacity-50"
                               >
@@ -642,116 +657,116 @@ export default function PagosMensualesPage() {
 
                 {/* Desktop Table */}
                 <ResponsiveTable headers={['Tarotista', 'Plataforma', 'Consultas', 'Monto', 'Estado', 'Acciones']}>
-                {data.data.map((payout: MonthlyPayoutData) => (
-                  <ResponsiveTableRow key={payout.reader_id}>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {payout.avatar_url ? (
-                          <img 
-                            src={payout.avatar_url} 
-                            alt={payout.display_name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold">
-                            {payout.display_name.charAt(0).toUpperCase()}
+                  {data.data.map((payout: MonthlyPayoutData) => (
+                    <ResponsiveTableRow key={payout.reader_id}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {payout.avatar_url ? (
+                            <img
+                              src={payout.avatar_url}
+                              alt={payout.display_name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold">
+                              {payout.display_name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <Link
+                              href={`/tarotistas/${payout.reader_id}`}
+                              className="text-sm font-medium text-purple-400 hover:text-purple-300 transition"
+                            >
+                              {payout.display_name}
+                            </Link>
+                            <p className="text-xs text-slate-500">
+                              {payout.sessions_count} consulta{payout.sessions_count !== 1 ? 's' : ''}
+                            </p>
                           </div>
-                        )}
-                        <div>
-                          <Link
-                            href={`/tarotistas/${payout.reader_id}`}
-                            className="text-sm font-medium text-purple-400 hover:text-purple-300 transition"
-                          >
-                            {payout.display_name}
-                          </Link>
-                          <p className="text-xs text-slate-500">
-                            {payout.sessions_count} consulta{payout.sessions_count !== 1 ? 's' : ''}
-                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        {getPlatformBadge(payout.currency)}
-                        <span className="text-xs text-slate-500">{payout.currency}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-sm text-slate-300">
-                        {payout.sessions_count}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="text-lg font-semibold text-white">
-                        {formatCurrency(payout.amount, payout.currency)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        {getStatusBadge(payout.payout_status)}
-                        {payout.processed_at && (
-                          <span className="text-xs text-slate-500">
-                            {formatDate(payout.processed_at, 'relative')}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        {!payout.payout_status ? (
-                          <button
-                            onClick={() => handleProcessPayout(payout)}
-                            disabled={processPayoutMutation.isPending}
-                            className="px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded text-xs font-medium transition disabled:opacity-50"
-                          >
-                            Procesar
-                          </button>
-                        ) : (
-                          <div className="flex gap-1">
-                            {payout.payout_status === 'pending' && (
-                              <button
-                                onClick={() => handleUpdateStatus(payout.payout_id!, 'completed')}
-                                className="px-2 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded text-xs transition"
-                                title="Marcar como completado"
-                              >
-                                <CheckCircle2 className="w-3 h-3" />
-                              </button>
-                            )}
-                            {payout.receipt_url && (
-                              <button
-                                onClick={() => setViewReceiptUrl(payout.receipt_url)}
-                                className="px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded text-xs transition"
-                                title="Ver comprobante"
-                              >
-                                <Eye className="w-3 h-3" />
-                              </button>
-                            )}
-                            {payout.payout_id && (
-                              <button
-                                onClick={() => handleUploadReceipt(payout.payout_id!)}
-                                disabled={uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id}
-                                className="px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded text-xs transition disabled:opacity-50"
-                                title={payout.receipt_url ? "Reemplazar comprobante" : "Subir comprobante"}
-                              >
-                                <Upload className={`w-3 h-3 ${uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id ? 'animate-pulse' : ''}`} />
-                              </button>
-                            )}
-                            {(payout.payout_status === 'pending' || payout.payout_status === 'failed') && (
-                              <button
-                                onClick={() => handleUpdateStatus(payout.payout_id!, 'cancelled')}
-                                className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-xs transition"
-                                title="Cancelar"
-                              >
-                                <XCircle className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </ResponsiveTableRow>
-                ))}
-              </ResponsiveTable>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          {getPlatformBadge(payout.currency)}
+                          <span className="text-xs text-slate-500">{payout.currency}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-sm text-slate-300">
+                          {payout.sessions_count}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="text-lg font-semibold text-white">
+                          {formatCurrency(payout.amount, payout.currency)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          {getStatusBadge(payout.payout_status)}
+                          {payout.processed_at && (
+                            <span className="text-xs text-slate-500">
+                              {formatDate(payout.processed_at, 'relative')}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          {!payout.payout_status ? (
+                            <button
+                              onClick={() => handleProcessPayout(payout)}
+                              disabled={processPayoutMutation.isPending}
+                              className="px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded text-xs font-medium transition disabled:opacity-50"
+                            >
+                              Procesar
+                            </button>
+                          ) : (
+                            <div className="flex gap-1">
+                              {payout.payout_status === 'pending' && (
+                                <button
+                                  onClick={() => handleUpdateStatus(payout.payout_id!, 'completed')}
+                                  className="px-2 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded text-xs transition"
+                                  title="Marcar como completado"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                </button>
+                              )}
+                              {payout.receipt_url && (
+                                <button
+                                  onClick={() => setViewReceiptUrl(payout.receipt_url)}
+                                  className="px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded text-xs transition"
+                                  title="Ver comprobante"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </button>
+                              )}
+                              {payout.payout_id && (
+                                <button
+                                  onClick={() => handleUploadReceipt(payout)}
+                                  disabled={uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id}
+                                  className="px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded text-xs transition disabled:opacity-50"
+                                  title={payout.receipt_url ? "Reemplazar comprobante" : "Subir comprobante"}
+                                >
+                                  <Upload className={`w-3 h-3 ${uploadReceiptMutation.isPending && payoutForReceipt === payout.payout_id ? 'animate-pulse' : ''}`} />
+                                </button>
+                              )}
+                              {(payout.payout_status === 'pending' || payout.payout_status === 'failed') && (
+                                <button
+                                  onClick={() => handleUpdateStatus(payout.payout_id!, 'cancelled')}
+                                  className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-xs transition"
+                                  title="Cancelar"
+                                >
+                                  <XCircle className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </ResponsiveTableRow>
+                  ))}
+                </ResponsiveTable>
               </>
             )}
           </SectionCard>
@@ -759,20 +774,20 @@ export default function PagosMensualesPage() {
       </div>
 
       {/* Process Payout Modal */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!payoutToProcess}
         onClose={cancelProcessPayout}
         onConfirm={confirmProcessPayout}
         title="Procesar Pago"
         message={
-          payoutToProcess 
+          payoutToProcess
             ? `¿Procesar pago de ${formatCurrency(payoutToProcess.amount, payoutToProcess.currency)} a ${payoutToProcess.display_name} vía ${payoutToProcess.currency === 'ARS' ? 'MercadoPago' : 'PayPal'}?`
             : ''
         }
         isLoading={processPayoutMutation.isPending}
       />
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!statusToUpdate}
         onClose={cancelUpdateStatus}
         onConfirm={confirmUpdateStatus}
@@ -780,6 +795,16 @@ export default function PagosMensualesPage() {
         message={`¿Estás seguro de cambiar el estado de este pago a "${statusToUpdate?.status}"?`}
         isLoading={updateStatusMutation.isPending}
         isDestructive={statusToUpdate?.status === 'cancelled'}
+      />
+
+      {/* Replace Receipt Modal */}
+      <ConfirmModal
+        isOpen={!!payoutForReceiptReplace}
+        onClose={() => setPayoutForReceiptReplace(null)}
+        onConfirm={confirmReplaceReceipt}
+        title="Reemplazar Comprobante"
+        message={`Este pago (de ${payoutForReceiptReplace?.display_name}) ya fue marcado como Completado y tiene un comprobante. ¿Estás seguro de que quieres reemplazarlo por uno nuevo? Esta acción no se puede deshacer.`}
+        isDestructive={true}
       />
 
       {/* Hidden file input for receipt upload */}

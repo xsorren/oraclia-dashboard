@@ -83,13 +83,14 @@ export function MobileCardList({ children }: MobileCardListProps) {
 interface MobileCardProps {
   children: ReactNode;
   onClick?: () => void;
+  className?: string;
 }
 
-export function MobileCard({ children, onClick }: MobileCardProps) {
+export function MobileCard({ children, onClick, className = '' }: MobileCardProps) {
   return (
-    <div 
+    <div
       onClick={onClick}
-      className={`bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-3 ${onClick ? 'cursor-pointer hover:bg-slate-800/70 transition' : ''}`}
+      className={`bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-3 ${onClick ? 'cursor-pointer hover:bg-slate-800/70 transition' : ''} ${className}`}
     >
       {children}
     </div>

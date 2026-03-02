@@ -141,8 +141,8 @@ export interface FinancesData {
   // Real payments summary by platform
   platform_summary: PlatformSummary;
   // Breakdown by currency
-  by_currency: Record<string, { 
-    total: number; 
+  by_currency: Record<string, {
+    total: number;
     provider: string;
     payments_count: number;
   }>;
@@ -182,11 +182,16 @@ export interface Report {
 
 export interface ConsultationMessage {
   id: string;
-  body_text?: string;
-  created_at: string;
+  sender_id: string;
   msg_type: string;
-  attachments: Array<{ id: string; media_kind: 'image' | 'audio'; url?: string }>;
+  body_text: string | null;
+  created_at: string;
   is_reader: boolean;
+  attachments: Array<{
+    id: string;
+    media_kind: 'image' | 'audio' | 'video';
+    url: string | null;
+  }>;
 }
 
 /** A report submitted by a tarotista about a Flash question author. */
@@ -258,6 +263,7 @@ export interface FlashQuestion {
   answer?: {
     reader_name: string;
     body_text: string;
+    image_url?: string | null;
   };
 }
 
@@ -280,6 +286,8 @@ export interface PrivateConsultation {
     body_text: string;
   };
 }
+
+
 
 export interface TarotistaDetailData {
   id: string;
@@ -426,18 +434,18 @@ export const adminApi = {
   updateTarotistaCurrency: (params: { tarotistaId: string; preferredCurrency: Currency }) =>
     adminFetch<{ success: boolean; message: string; platform: 'mercadopago' | 'paypal' }>(
       'PATCH', `admin-dashboard/tarotista/${params.tarotistaId}/currency`, {
-        body: { preferred_currency: params.preferredCurrency },
-        errorMessage: 'Error al actualizar moneda del tarotista',
-      },
+      body: { preferred_currency: params.preferredCurrency },
+      errorMessage: 'Error al actualizar moneda del tarotista',
+    },
     ),
 
   // Update tarotista status
   updateTarotistaStatus: (params: { tarotistaId: string; status: 'active' | 'inactive' }) =>
     adminFetch<{ success: boolean; message: string; new_status: string }>(
       'PATCH', `admin-dashboard/tarotista/${params.tarotistaId}/status`, {
-        body: { status: params.status },
-        errorMessage: 'Error al actualizar estado del tarotista',
-      },
+      body: { status: params.status },
+      errorMessage: 'Error al actualizar estado del tarotista',
+    },
     ),
 
   // Users list
@@ -462,9 +470,9 @@ export const adminApi = {
   getPendingPayouts: (params: { currency?: Currency }) =>
     adminFetch<{ data: PendingPayout[]; total_pending: number; count: number }>(
       'GET', 'admin-dashboard/pending-payouts', {
-        params: { currency: params.currency },
-        errorMessage: 'Error al obtener pagos pendientes',
-      },
+      params: { currency: params.currency },
+      errorMessage: 'Error al obtener pagos pendientes',
+    },
     ),
 
   // Monthly payouts (pago a tarotistas)
@@ -478,9 +486,9 @@ export const adminApi = {
   processPayout: (params: { readerId: string; month?: number; year?: number; currency?: Currency }) =>
     adminFetch<{ success: boolean; message: string; data: unknown }>(
       'POST', `admin-dashboard/process-payout/${params.readerId}`, {
-        params: { currency: params.currency, month: params.month, year: params.year },
-        errorMessage: 'Error al procesar pago',
-      },
+      params: { currency: params.currency, month: params.month, year: params.year },
+      errorMessage: 'Error al procesar pago',
+    },
     ),
 
   // Update payout status
@@ -494,15 +502,15 @@ export const adminApi = {
   }) =>
     adminFetch<{ success: boolean; message: string; data: unknown }>(
       'PATCH', `admin-dashboard/update-payout-status/${params.payoutId}`, {
-        body: {
-          status: params.status,
-          notes: params.notes,
-          payment_date: params.payment_date,
-          payment_method: params.payment_method,
-          transaction_reference: params.transaction_reference,
-        },
-        errorMessage: 'Error al actualizar estado',
+      body: {
+        status: params.status,
+        notes: params.notes,
+        payment_date: params.payment_date,
+        payment_method: params.payment_method,
+        transaction_reference: params.transaction_reference,
       },
+      errorMessage: 'Error al actualizar estado',
+    },
     ),
 
   // Upload payout receipt (FormData — cannot use adminFetch)
@@ -591,9 +599,9 @@ export const adminApi = {
   async getPendingReportsCount(): Promise<number> {
     const data = await adminFetch<{ pending_count: number }>(
       'GET', 'admin-dashboard/pending-reports-count', {
-        unwrapData: true,
-        errorMessage: 'Error al obtener conteo de reportes',
-      },
+      unwrapData: true,
+      errorMessage: 'Error al obtener conteo de reportes',
+    },
     );
     return data.pending_count;
   },
@@ -663,8 +671,8 @@ export const adminApi = {
   getConsultationDetail: (consultationId: string) =>
     adminFetch<{ data: { session: PrivateConsultation & { [key: string]: unknown }; messages: ConsultationMessage[] } }>(
       'GET', `admin-dashboard/consultation/${consultationId}/details`, {
-        errorMessage: 'Error al obtener detalle de consulta',
-      },
+      errorMessage: 'Error al obtener detalle de consulta',
+    },
     ),
 
   // Flash reports (reports linked to Flash questions)

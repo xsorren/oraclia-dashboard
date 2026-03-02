@@ -1,276 +1,54 @@
 'use client';
 
-import { ConfirmModal } from '@/components/common/ConfirmModal';
-import { EmptyState } from '@/components/common/EmptyState';
-import { Pagination } from '@/components/common/Pagination';
-import { MobileCard, MobileCardActions, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
-import { SectionCard } from '@/components/common/SectionCard';
-import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
-import { useToast } from '@/components/ui/Toast';
-import { useDeleteFlashQuestion, useFlashQuestions } from '@/lib/hooks/useConsultas';
-import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
-import type { LucideIcon } from 'lucide-react';
-import {
-    AlertCircle,
-    Archive,
-    CheckCircle2,
-    Clock,
-    Eye,
-    MessageSquare,
-    Search,
-    User,
-    XCircle
-} from 'lucide-react';
+import { MessageCircle, Zap } from 'lucide-react';
 import { useState } from 'react';
-
-const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
-  open: { label: 'Abierta', icon: Clock, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
-  claimed: { label: 'Reclamada', icon: Eye, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  answered: { label: 'Respondida', icon: CheckCircle2, color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
-  closed: { label: 'Cerrada', icon: CheckCircle2, color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-  cancelled: { label: 'Cancelada', icon: XCircle, color: 'bg-red-500/10 text-red-500 border-red-500/20' },
-  expired: { label: 'Expirada', icon: AlertCircle, color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-  unknown: { label: 'Desconocido', icon: AlertCircle, color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
-};
+import { FlashQuestionsTab } from './components/FlashQuestionsTab';
+import { PrivateConsultationsTab } from './components/PrivateConsultationsTab';
 
 export default function ConsultasPage() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('all');
-  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'flash' | 'privadas'>('flash');
 
-  const { toast } = useToast();
-
-  const { data, isLoading } = useFlashQuestions({ page, limit: 15, search, status });
-
-  const deleteMutation = useDeleteFlashQuestion();
-
-  const handleDelete = () => {
-    if (!questionToDelete) return;
-    deleteMutation.mutate(questionToDelete, {
-      onSuccess: () => {
-        toast('Pregunta archivada correctamente', 'success');
-        setQuestionToDelete(null);
-      },
-      onError: (error) => {
-        toast('Error al archivar: ' + (error as Error).message, 'error');
-        setQuestionToDelete(null);
-      },
-    });
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-  };
-
-  return (
-    <>
-      <Header 
-        title="Consultas Flash" 
-        subtitle="Gestión de preguntas y respuestas"
-        breadcrumbs={[{ label: 'Inicio', href: '/' }, { label: 'Consultas' }]}
-      />
-
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-[2000px] mx-auto">
-        {/* Filters */}
-        <SectionCard padding="none" className="flex flex-col sm:flex-row gap-4 p-4">
-          <form onSubmit={handleSearch} className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Buscar por contenido..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+    return (
+        <>
+            <Header
+                title="Consultas"
+                subtitle="Gestión de preguntas flash y sesiones privadas"
+                breadcrumbs={[{ label: 'Inicio', href: '/' }, { label: 'Consultas' }]}
             />
-          </form>
 
-          <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="open">Abierta</option>
-            <option value="claimed">Reclamada</option>
-            <option value="answered">Respondida</option>
-            <option value="expired">Expirada</option>
-            <option value="cancelled">Cancelada</option>
-          </select>
-        </SectionCard>
+            <div className="p-4 sm:p-6 lg:p-8 max-w-[2000px] mx-auto w-full">
+                {/* Tabs switcher */}
+                <div className="flex bg-slate-800/50 p-1 rounded-xl w-full max-w-sm mb-6 border border-slate-700">
+                    <button
+                        onClick={() => setActiveTab('flash')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === 'flash'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                    >
+                        <Zap className="w-4 h-4" />
+                        Flash
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('privadas')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === 'privadas'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                    >
+                        <MessageCircle className="w-4 h-4" />
+                        Privadas
+                    </button>
+                </div>
 
-        {/* Content */}
-        {isLoading ? (
-            <TableSkeleton columns={6} rows={10} />
-        ) : (
-            <SectionCard padding="none" className="overflow-hidden">
-                {!data?.data || data.data.length === 0 ? (
-                    <EmptyState 
-                        icon={Search}
-                        title="No se encontraron consultas"
-                        description="Intenta ajustar los filtros o la búsqueda para encontrar lo que necesitas."
-                    />
+                {/* Tab Content */}
+                {activeTab === 'flash' ? (
+                    <FlashQuestionsTab />
                 ) : (
-                    <>
-                        {/* Mobile Cards */}
-                        <MobileCardList>
-                            {data.data.map((question) => {
-                                const statusInfo = statusConfig[question.status] || statusConfig.unknown;
-                                const StatusIcon = statusInfo.icon;
-                                
-                                return (
-                                    <MobileCard key={question.id}>
-                                        <MobileCardHeader>
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                    {question.user?.avatar_url ? (
-                                                        <img src={question.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <User className="w-5 h-5 text-slate-400" />
-                                                    )}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="text-sm font-medium text-white truncate">
-                                                        {question.user?.display_name || 'Desconocido'}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">
-                                                        {formatRelativeTime(question.created_at)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${statusInfo.color}`}>
-                                                <StatusIcon className="w-3 h-3" />
-                                                <span className="hidden xs:inline">{statusInfo.label}</span>
-                                            </div>
-                                        </MobileCardHeader>
-                                        
-                                        <div className="bg-slate-900/50 rounded-lg p-3 -mx-1">
-                                            <div className="flex items-start gap-2">
-                                                <MessageSquare className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                                                <p className="text-sm text-slate-300 line-clamp-3">
-                                                    {question.content}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {question.answer && (
-                                            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3 -mx-1">
-                                                <div className="flex items-center gap-2 text-green-500 text-xs font-medium mb-1">
-                                                    <CheckCircle2 className="w-3 h-3" />
-                                                    Respondida por {question.answer.reader_name}
-                                                </div>
-                                                <p className="text-sm text-slate-400 line-clamp-2">{question.answer.body_text}</p>
-                                            </div>
-                                        )}
-
-                                        <MobileCardActions>
-                                            <button 
-                                                onClick={() => setQuestionToDelete(question.id)}
-                                                className="flex-1 flex items-center justify-center gap-2 py-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition text-sm"
-                                            >
-                                                <Archive className="w-4 h-4" />
-                                                Archivar
-                                            </button>
-                                        </MobileCardActions>
-                                    </MobileCard>
-                                );
-                            })}
-                        </MobileCardList>
-
-                        {/* Desktop Table */}
-                        <ResponsiveTable headers={['Usuario', 'Pregunta', 'Estado', 'Respuesta', 'Fecha', 'Acciones']}>
-                        {data.data.map((question) => {
-                            const statusInfo = statusConfig[question.status] || statusConfig.unknown;
-                            const StatusIcon = statusInfo.icon;
-                            
-                            return (
-                                <ResponsiveTableRow key={question.id}>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                {question.user?.avatar_url ? (
-                                                    <img src={question.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <User className="w-4 h-4 text-slate-400" />
-                                                )}
-                                            </div>
-                                            <div className="text-sm font-medium text-white">
-                                                {question.user?.display_name || 'Desconocido'}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="max-w-md">
-                                            <p className="text-sm text-slate-300 line-clamp-2" title={question.content}>
-                                                {question.content}
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${statusInfo.color}`}>
-                                            <StatusIcon className="w-3.5 h-3.5" />
-                                            {statusInfo.label}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {question.answer ? (
-                                            <div className="text-xs">
-                                                <div className="text-green-500 font-medium mb-1 flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3" />
-                                                    Respondida por {question.answer.reader_name}
-                                                </div>
-                                                <p className="text-slate-400 line-clamp-1">{question.answer.body_text}</p>
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs text-slate-600 italic">Sin respuesta</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm text-slate-400">
-                                            {formatDate(question.created_at)}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <button 
-                                            onClick={() => setQuestionToDelete(question.id)}
-                                            className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition"
-                                            title="Archivar pregunta"
-                                        >
-                                            <Archive className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </ResponsiveTableRow>
-                            );
-                        })}
-                    </ResponsiveTable>
-                    </>
+                    <PrivateConsultationsTab />
                 )}
-
-                {data?.pagination && (
-                    <Pagination
-                        page={data.pagination.page}
-                        pages={data.pagination.pages}
-                        total={data.pagination.total}
-                        limit={15}
-                        onPageChange={setPage}
-                        itemLabel="consultas"
-                    />
-                )}
-            </SectionCard>
-        )}
-      </div>
-
-      <ConfirmModal 
-        isOpen={!!questionToDelete}
-        onClose={() => setQuestionToDelete(null)}
-        onConfirm={handleDelete}
-        title="Archivar Consulta"
-        message="¿Estás seguro de archivar esta pregunta? La pregunta dejará de aparecer en el feed de la app, pero los datos se conservarán en la base de datos."
-        isDestructive
-        isLoading={deleteMutation.isPending}
-      />
-    </>
-  );
+            </div>
+        </>
+    );
 }
