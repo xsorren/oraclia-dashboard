@@ -21,6 +21,7 @@ import { usePathname } from 'next/navigation';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Tarotistas', href: '/tarotistas', icon: Users },
+  { name: 'Miniaturas', href: '/thumbnails', icon: Sparkles }, /* TEMP */
   { name: 'Usuarios', href: '/usuarios', icon: User },
   { name: 'Pagos', href: '/pagos', icon: DollarSign },
   { name: 'Notificaciones', href: '/notificaciones', icon: Bell },
