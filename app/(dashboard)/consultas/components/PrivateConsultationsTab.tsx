@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { SectionCard } from '@/components/common/SectionCard';
+import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { usePrivateConsultations } from '@/lib/hooks/useConsultas';
 import { formatDateTime, formatRelativeTime } from '@/lib/utils/dates';
@@ -111,11 +112,12 @@ export function PrivateConsultationsTab() {
                                             <MobileCardHeader>
                                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                                     <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                        {consultation.user?.avatar_url ? (
-                                                            <img src={consultation.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <User className="w-5 h-5 text-slate-400" />
-                                                        )}
+                                                        <SignedAvatar
+                                                            src={consultation.user?.avatar_url}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            fallback={<User className="w-5 h-5 text-slate-400" />}
+                                                        />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="text-sm font-medium text-white truncate">
@@ -174,11 +176,12 @@ export function PrivateConsultationsTab() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                        {consultation.user?.avatar_url ? (
-                                                            <img src={consultation.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <User className="w-4 h-4 text-slate-400" />
-                                                        )}
+                                                        <SignedAvatar
+                                                            src={consultation.user?.avatar_url}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            fallback={<User className="w-4 h-4 text-slate-400" />}
+                                                        />
                                                     </div>
                                                     <div className="text-sm font-medium text-white">
                                                         {consultation.user?.display_name || 'Desconocido'}

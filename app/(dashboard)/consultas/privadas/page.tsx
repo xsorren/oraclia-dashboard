@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { SectionCard } from '@/components/common/SectionCard';
+import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { SlideOver } from '@/components/common/SlideOver';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
@@ -146,11 +147,12 @@ export default function ConsultasPrivadasPage() {
                                         <MobileCardHeader>
                                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                                 <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                    {consultation.user?.avatar_url ? (
-                                                        <img src={consultation.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <User className="w-5 h-5 text-slate-400" />
-                                                    )}
+                                                    <SignedAvatar
+                                                        src={consultation.user?.avatar_url}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        fallback={<User className="w-5 h-5 text-slate-400" />}
+                                                    />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="text-sm font-medium text-white truncate">
@@ -181,11 +183,12 @@ export default function ConsultasPrivadasPage() {
                                                 value={
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                            {consultation.reader.avatar_url ? (
-                                                                <img src={consultation.reader.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <User className="w-3 h-3 text-slate-400" />
-                                                            )}
+                                                            <SignedAvatar
+                                                                src={consultation.reader.avatar_url}
+                                                                alt=""
+                                                                className="w-full h-full object-cover"
+                                                                fallback={<User className="w-3 h-3 text-slate-400" />}
+                                                            />
                                                         </div>
                                                         <span className="truncate max-w-[100px]">{consultation.reader.display_name}</span>
                                                     </div>
@@ -228,11 +231,12 @@ export default function ConsultasPrivadasPage() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                {consultation.user?.avatar_url ? (
-                                                    <img src={consultation.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <User className="w-4 h-4 text-slate-400" />
-                                                )}
+                                                <SignedAvatar
+                                                    src={consultation.user?.avatar_url}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    fallback={<User className="w-4 h-4 text-slate-400" />}
+                                                />
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-white">
@@ -248,11 +252,12 @@ export default function ConsultasPrivadasPage() {
                                         {consultation.reader ? (
                                             <div className="flex items-center gap-2">
                                                 <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                    {consultation.reader.avatar_url ? (
-                                                        <img src={consultation.reader.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <User className="w-3 h-3 text-slate-400" />
-                                                    )}
+                                                    <SignedAvatar
+                                                        src={consultation.reader.avatar_url}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        fallback={<User className="w-3 h-3 text-slate-400" />}
+                                                    />
                                                 </div>
                                                 <span className="text-sm text-slate-300">{consultation.reader.display_name}</span>
                                             </div>
@@ -347,9 +352,12 @@ export default function ConsultasPrivadasPage() {
                             <span className="text-xs text-slate-500 block mb-1">Cliente</span>
                             <div className="flex items-center gap-2">
                                 <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center overflow-hidden">
-                                     {detailData.data.session.user?.avatar_url ? (
-                                        <img src={detailData.data.session.user.avatar_url} alt="User Avatar" className="w-full h-full object-cover" />
-                                     ) : <User size={12} className="text-purple-400"/>}
+                                     <SignedAvatar
+                                        src={detailData.data.session.user?.avatar_url}
+                                        alt="User Avatar"
+                                        className="w-full h-full object-cover"
+                                        fallback={<User size={12} className="text-purple-400" />}
+                                     />
                                 </div>
                                 <span className="text-sm text-slate-300 truncate">{detailData.data.session.user?.display_name || 'Desconocido'}</span>
                             </div>
@@ -358,9 +366,12 @@ export default function ConsultasPrivadasPage() {
                             <span className="text-xs text-slate-500 block mb-1">Tarotista</span>
                             <div className="flex items-center gap-2">
                                 <div className="w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center overflow-hidden">
-                                     {detailData.data.session.reader?.avatar_url ? (
-                                        <img src={detailData.data.session.reader.avatar_url} alt="Reader Avatar" className="w-full h-full object-cover" />
-                                     ) : <User size={12} className="text-blue-400"/>}
+                                     <SignedAvatar
+                                        src={detailData.data.session.reader?.avatar_url}
+                                        alt="Reader Avatar"
+                                        className="w-full h-full object-cover"
+                                        fallback={<User size={12} className="text-blue-400" />}
+                                     />
                                 </div>
                                 <span className="text-sm text-slate-300 truncate">{detailData.data.session.reader?.display_name || 'Sin asignar'}</span>
                             </div>

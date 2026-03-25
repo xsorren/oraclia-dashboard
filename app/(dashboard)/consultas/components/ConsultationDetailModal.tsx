@@ -1,5 +1,6 @@
 'use client';
 
+import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { useConsultationDetail } from '@/lib/hooks/useConsultas';
 import { formatDateTime } from '@/lib/utils/dates';
 import { CheckCircle2, User, X } from 'lucide-react';
@@ -33,11 +34,12 @@ export function ConsultationDetailModal({ consultationId, onClose }: Props) {
                                 <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                                            {session.user?.avatar_url ? (
-                                                <img src={session.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <User className="w-5 h-5 text-slate-400" />
-                                            )}
+                                            <SignedAvatar
+                                                src={session.user?.avatar_url}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                                fallback={<User className="w-5 h-5 text-slate-400" />}
+                                            />
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-white">{session.user?.display_name || 'Desconocido'}</h3>
@@ -52,11 +54,12 @@ export function ConsultationDetailModal({ consultationId, onClose }: Props) {
                                                 <div className="text-sm font-medium text-purple-400">{session.reader.display_name}</div>
                                             </div>
                                             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-purple-500/20">
-                                                {session.reader.avatar_url ? (
-                                                    <img src={session.reader.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                                                )}
+                                                <SignedAvatar
+                                                    src={session.reader.avatar_url}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    fallback={<CheckCircle2 className="w-4 h-4 text-purple-400" />}
+                                                />
                                             </div>
                                         </div>
                                     )}

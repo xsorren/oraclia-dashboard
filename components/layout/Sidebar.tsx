@@ -3,17 +3,17 @@
 import { usePendingReportsCount } from '@/lib/hooks/useReports';
 import { cn } from '@/lib/utils/cn';
 import {
-  AlertTriangle,
-  Bell,
-  DollarSign,
-  Flag,
-  LayoutDashboard,
-  LogOut,
-  MessageCircle,
-  Sparkles,
-  User,
-  Users,
-  Zap
+    AlertTriangle,
+    Bell,
+    DollarSign,
+    Flag,
+    LayoutDashboard,
+    LogOut,
+    MessageCircle,
+    Sparkles,
+    User,
+    Users,
+    Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,7 +21,6 @@ import { usePathname } from 'next/navigation';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Tarotistas', href: '/tarotistas', icon: Users },
-  { name: 'Miniaturas', href: '/thumbnails', icon: Sparkles }, /* TEMP */
   { name: 'Usuarios', href: '/usuarios', icon: User },
   { name: 'Pagos', href: '/pagos', icon: DollarSign },
   { name: 'Notificaciones', href: '/notificaciones', icon: Bell },

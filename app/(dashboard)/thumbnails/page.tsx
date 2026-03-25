@@ -12,14 +12,47 @@ export default function ThumbnailsPage() {
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const supabase = createClient();
 
+  const getSignedAvatarUrl = async (path: string): Promise<string | null> => {
+    const edgeFnUrl = process.env.NEXT_PUBLIC_EDGE_FUNCTIONS_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!edgeFnUrl || !anonKey) return null;
+    try {
+      const res = await fetch(`${edgeFnUrl}/media-get-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anonKey}` },
+        body: JSON.stringify({ path }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.signedUrl ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchVideos = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('reader_intro_video')
-      .select('*, profiles!reader_intro_video_reader_id_fkey(display_name)');
+      .select('*, reader_profiles(profiles(display_name, avatar_url))');
     
-    if (data) setVideos(data);
-    else console.error(error);
+    if (data) {
+      const patchedData = await Promise.all(
+        data.map(async (v) => {
+          const avatarUrl = v.reader_profiles?.profiles?.avatar_url;
+          if (avatarUrl && !avatarUrl.startsWith('http')) {
+            const signedUrl = await getSignedAvatarUrl(avatarUrl);
+            if (signedUrl) {
+              v.reader_profiles.profiles.avatar_url = signedUrl;
+            }
+          }
+          return v;
+        })
+      );
+      setVideos(patchedData);
+    } else {
+      console.error(error);
+    }
     
     setLoading(false);
   };
@@ -31,24 +64,27 @@ export default function ThumbnailsPage() {
   const handleUpload = async (readerId: string, file: File) => {
     try {
       setUploading(prev => ({ ...prev, [readerId]: true }));
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `admin-thumb-${readerId}-${Date.now()}.${fileExt}`;
-      const filePath = `tarotistas/${readerId}/${fileName}`;
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('reader_profile')
-        .upload(filePath, file, { upsert: true });
+      const edgeFnUrl = process.env.NEXT_PUBLIC_EDGE_FUNCTIONS_URL;
+      if (!edgeFnUrl) throw new Error('Configuración de entorno incompleta');
 
-      if (uploadError) throw uploadError;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('No hay sesión activa');
 
-      const { error: updateError } = await supabase
-        .from('reader_intro_video')
-        .update({ thumbnail_path: uploadData.path })
-        .eq('reader_id', readerId);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (updateError) throw updateError;
-      
+      const res = await fetch(`${edgeFnUrl}/admin-dashboard/upload-thumbnail/${readerId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error?.message || json?.message || `Error ${res.status}`);
+      }
+
       alert('Miniatura cargada con éxito');
       fetchVideos();
     } catch (error: any) {
@@ -86,8 +122,21 @@ export default function ThumbnailsPage() {
                   </tr>
                 ) : videos.map((video) => (
                   <tr key={video.reader_id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                      {video.profiles?.display_name || 'Desconocido'}
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                      <div className="flex flex-col items-center gap-2">
+                        {video.reader_profiles?.profiles?.avatar_url ? (
+                          <img 
+                            src={video.reader_profiles.profiles.avatar_url}
+                            alt={video.reader_profiles?.profiles?.display_name || ''}
+                            className="w-32 h-32 object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700"
+                          />
+                        ) : (
+                          <div className="w-32 h-32 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 text-sm border border-gray-200 dark:border-gray-700">
+                            Sin Foto
+                          </div>
+                        )}
+                        <span className="text-center font-bold">{video.reader_profiles?.profiles?.display_name || 'Desconocido'}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 truncate max-w-xs" title={video.storage_path}>
                       {video.storage_path}
@@ -112,11 +161,11 @@ export default function ThumbnailsPage() {
                         ) : (
                           <>
                             <Upload className="w-4 h-4" />
-                            Subir PNG
+                            Subir JPEG
                             <input 
                               type="file" 
                               className="hidden" 
-                              accept="image/png, image/jpeg" 
+                              accept="image/jpeg, image/jpg" 
                               onChange={(e) => {
                                 if (e.target.files && e.target.files[0]) {
                                   handleUpload(video.reader_id, e.target.files[0]);

@@ -4,6 +4,7 @@ import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { SectionCard } from '@/components/common/SectionCard';
+import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
@@ -13,21 +14,21 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { formatDate } from '@/lib/utils/dates';
 import type { Currency, PayoutStatus } from '@/types/database';
 import {
-  Calendar,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  CreditCard,
-  Download,
-  Eye,
-  FileText,
-  RefreshCw,
-  TrendingUp,
-  Upload,
-  User,
-  Wallet,
-  XCircle
+    Calendar,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    CreditCard,
+    Download,
+    Eye,
+    FileText,
+    RefreshCw,
+    TrendingUp,
+    Upload,
+    User,
+    Wallet,
+    XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -573,10 +574,15 @@ export default function PagosMensualesPage() {
                       <MobileCardHeader>
                         <div className="flex items-center gap-3 min-w-0">
                           {payout.avatar_url ? (
-                            <img
+                            <SignedAvatar
                               src={payout.avatar_url}
                               alt={payout.display_name}
                               className="w-10 h-10 rounded-full object-cover shrink-0"
+                              fallback={
+                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+                                  {payout.display_name.charAt(0).toUpperCase()}
+                                </div>
+                              }
                             />
                           ) : (
                             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold shrink-0">
@@ -662,10 +668,15 @@ export default function PagosMensualesPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {payout.avatar_url ? (
-                            <img
+                            <SignedAvatar
                               src={payout.avatar_url}
                               alt={payout.display_name}
                               className="w-10 h-10 rounded-full object-cover"
+                              fallback={
+                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold">
+                                  {payout.display_name.charAt(0).toUpperCase()}
+                                </div>
+                              }
                             />
                           ) : (
                             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-amber-500 rounded-full flex items-center justify-center text-white font-bold">
