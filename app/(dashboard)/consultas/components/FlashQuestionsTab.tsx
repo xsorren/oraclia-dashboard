@@ -8,7 +8,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useToast } from '@/components/ui/Toast';
 import { useDeleteFlashQuestion, useFlashQuestions, useResetFlashQuestion } from '@/lib/hooks/useConsultas';
-import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
+import { formatDateTime, formatRelativeTime } from '@/lib/utils/dates';
 import type { LucideIcon } from 'lucide-react';
 import {
     AlertCircle,
@@ -272,7 +272,7 @@ export function FlashQuestionsTab() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-slate-400">
-                                                    {formatDate(question.created_at)}
+                                                    {formatDateTime(question.created_at)}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">

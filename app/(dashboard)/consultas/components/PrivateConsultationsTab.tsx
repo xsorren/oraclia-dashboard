@@ -6,7 +6,7 @@ import { MobileCard, MobileCardHeader, MobileCardList, ResponsiveTable, Responsi
 import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { usePrivateConsultations } from '@/lib/hooks/useConsultas';
-import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
+import { formatDateTime, formatRelativeTime } from '@/lib/utils/dates';
 import type { LucideIcon } from 'lucide-react';
 import {
     AlertCircle,
@@ -217,7 +217,7 @@ export function PrivateConsultationsTab() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="text-sm text-slate-400">
-                                                    {formatDate(consultation.created_at)}
+                                                    {formatDateTime(consultation.created_at)}
                                                 </div>
                                             </td>
                                         </ResponsiveTableRow>
