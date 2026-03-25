@@ -26,8 +26,6 @@ export interface Profile {
   created_at: string;
   updated_at: string;
   preferred_currency: Currency;
-  moon_sign: string | null;
-  rising_sign: string | null;
 }
 
 export interface Database {

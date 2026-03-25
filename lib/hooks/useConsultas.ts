@@ -45,6 +45,16 @@ export function useDeleteFlashQuestion() {
   });
 }
 
+export function useResetFlashQuestion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.resetFlashQuestion({ questionId: id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Private Consultations
 // ---------------------------------------------------------------------------

@@ -632,6 +632,13 @@ export const adminApi = {
     }
   },
 
+  // Reset flash question (claimed → open)
+  resetFlashQuestion: (params: { questionId: string }) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'PATCH', `admin-dashboard/flash-questions/${params.questionId}/reset`, {
+      errorMessage: 'Error al resetear pregunta flash',
+    }),
+
   // Configuration
   getConfiguration: () =>
     adminFetch<ConfigurationData>('GET', 'admin-dashboard/configuration', {

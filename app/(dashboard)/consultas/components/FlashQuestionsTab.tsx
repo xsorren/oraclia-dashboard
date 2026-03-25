@@ -7,7 +7,7 @@ import { MobileCard, MobileCardActions, MobileCardHeader, MobileCardList, Respon
 import { SectionCard } from '@/components/common/SectionCard';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useToast } from '@/components/ui/Toast';
-import { useDeleteFlashQuestion, useFlashQuestions } from '@/lib/hooks/useConsultas';
+import { useDeleteFlashQuestion, useFlashQuestions, useResetFlashQuestion } from '@/lib/hooks/useConsultas';
 import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -18,6 +18,7 @@ import {
     Eye,
     Image as ImageIcon,
     MessageSquare,
+    RotateCcw,
     Search,
     User,
     XCircle
@@ -39,10 +40,12 @@ export function FlashQuestionsTab() {
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('all');
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+    const [questionToReset, setQuestionToReset] = useState<string | null>(null);
 
     const { toast } = useToast();
     const { data, isLoading } = useFlashQuestions({ page, limit: 15, search, status });
     const deleteMutation = useDeleteFlashQuestion();
+    const resetMutation = useResetFlashQuestion();
 
     const handleDelete = () => {
         if (!questionToDelete) return;
@@ -54,6 +57,20 @@ export function FlashQuestionsTab() {
             onError: (error) => {
                 toast('Error al archivar: ' + (error as Error).message, 'error');
                 setQuestionToDelete(null);
+            },
+        });
+    };
+
+    const handleReset = () => {
+        if (!questionToReset) return;
+        resetMutation.mutate(questionToReset, {
+            onSuccess: () => {
+                toast('Pregunta reseteada a estado abierta', 'success');
+                setQuestionToReset(null);
+            },
+            onError: (error) => {
+                toast('Error al resetear: ' + (error as Error).message, 'error');
+                setQuestionToReset(null);
             },
         });
     };
@@ -176,6 +193,15 @@ export function FlashQuestionsTab() {
                                             )}
 
                                             <MobileCardActions>
+                                                {question.status === 'claimed' && (
+                                                    <button
+                                                        onClick={() => setQuestionToReset(question.id)}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition text-sm"
+                                                    >
+                                                        <RotateCcw className="w-4 h-4" />
+                                                        Resetear
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => setQuestionToDelete(question.id)}
                                                     className="flex-1 flex items-center justify-center gap-2 py-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition text-sm"
@@ -250,13 +276,24 @@ export function FlashQuestionsTab() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => setQuestionToDelete(question.id)}
-                                                    className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition"
-                                                    title="Archivar pregunta"
-                                                >
-                                                    <Archive className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    {question.status === 'claimed' && (
+                                                        <button
+                                                            onClick={() => setQuestionToReset(question.id)}
+                                                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition"
+                                                            title="Resetear a abierta"
+                                                        >
+                                                            <RotateCcw className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => setQuestionToDelete(question.id)}
+                                                        className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 rounded-lg transition"
+                                                        title="Archivar pregunta"
+                                                    >
+                                                        <Archive className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </ResponsiveTableRow>
                                     );
@@ -286,6 +323,17 @@ export function FlashQuestionsTab() {
                 message="¿Estás seguro de archivar esta pregunta? La pregunta dejará de aparecer en el feed de la app, pero los datos se conservarán en la base de datos."
                 isDestructive
                 isLoading={deleteMutation.isPending}
+            />
+
+            <ConfirmModal
+                isOpen={!!questionToReset}
+                onClose={() => setQuestionToReset(null)}
+                onConfirm={handleReset}
+                title="Resetear Pregunta Flash"
+                message="¿Estás seguro de resetear esta pregunta? Se cambiará el estado de 'reclamada' a 'abierta' y se quitará el tarotista asignado. La pregunta volverá a estar disponible en el feed para que otro tarotista la tome."
+                confirmText="Sí, resetear"
+                cancelText="Cancelar"
+                isLoading={resetMutation.isPending}
             />
         </div>
     );
