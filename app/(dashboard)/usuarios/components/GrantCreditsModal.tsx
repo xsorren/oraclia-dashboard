@@ -24,8 +24,11 @@ export function GrantCreditsModal({ isOpen, onClose, user }: GrantCreditsModalPr
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReason('regalo');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPackSku('');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotes('');
     }
   }, [isOpen]);
