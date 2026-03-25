@@ -32,3 +32,15 @@ export function useDeleteUser() {
     },
   });
 }
+
+export function useGrantEntitlement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, params }: { userId: string; params: { pack_sku: string; reason: string; notes?: string } }) =>
+      adminApi.grantEntitlement(userId, params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+}

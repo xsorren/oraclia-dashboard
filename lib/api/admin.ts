@@ -240,6 +240,17 @@ export interface Service {
 
 export interface ConfigurationData {
   services: Service[];
+  packs: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    description: string;
+    service_kind: string;
+    quantity_units: number;
+    price_usd: number;
+    price_ars: number;
+    price_eur: number;
+  }>;
 }
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -464,6 +475,14 @@ export const adminApi = {
   deleteUser: (userId: string) =>
     adminFetch<{ success: boolean; message: string }>('DELETE', `admin-dashboard/users/${userId}`, {
       errorMessage: 'Error al eliminar usuario',
+    }),
+
+  // Grant entitlement (gift/refund)
+  grantEntitlement: (userId: string, params: { pack_sku: string; reason: string; notes?: string }) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'POST', `admin-dashboard/users/${userId}/entitlements`, {
+      body: params,
+      errorMessage: 'Error al otorgar créditos',
     }),
 
   // Pending payouts

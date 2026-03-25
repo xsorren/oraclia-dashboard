@@ -13,9 +13,11 @@ import { formatDate } from '@/lib/utils/dates';
 import {
     Ban,
     Search,
-    Users
+    Users,
+    Gift
 } from 'lucide-react';
 import { useState } from 'react';
+import { GrantCreditsModal } from './components/GrantCreditsModal';
 
 function StatusBadge({ isActive, isBanned }: { isActive: boolean; isBanned: boolean }) {
   if (isBanned) {
@@ -48,6 +50,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; email: string | null } | null>(null);
+  const [userToGrantCredits, setUserToGrantCredits] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
 
   const { data: response, isLoading } = useUsers({
@@ -73,6 +76,10 @@ export default function UsersPage() {
 
   const handleBanClick = (id: string, name: string, email: string | null) => {
     setUserToDelete({ id, name, email });
+  };
+
+  const handleGrantCreditsClick = (id: string, name: string) => {
+    setUserToGrantCredits({ id, name });
   };
 
   const handleConfirmDelete = () => {
@@ -184,13 +191,22 @@ export default function UsersPage() {
 
                                     {!user.is_banned && (
                                         <MobileCardActions>
-                                            <button 
-                                                onClick={() => handleBanClick(user.id, user.display_name || 'Sin nombre', user.email)}
-                                                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 text-red-400 rounded-md hover:bg-red-500/20 transition text-sm"
-                                            >
-                                                <Ban className="w-4 h-4" />
-                                                Banear y desactivar
-                                            </button>
+                                            <div className="flex gap-2 w-full">
+                                                <button 
+                                                    onClick={() => handleGrantCreditsClick(user.id, user.display_name || 'Sin nombre')}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-500/10 text-purple-400 rounded-md hover:bg-purple-500/20 transition text-sm"
+                                                >
+                                                    <Gift className="w-4 h-4" />
+                                                    Gestionar Créditos
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleBanClick(user.id, user.display_name || 'Sin nombre', user.email)}
+                                                    className="flex items-center justify-center p-2 bg-red-500/10 text-red-400 rounded-md hover:bg-red-500/20 transition"
+                                                    title="Banear y desactivar"
+                                                >
+                                                    <Ban className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </MobileCardActions>
                                     )}
                                 </MobileCard>
@@ -221,14 +237,24 @@ export default function UsersPage() {
                                     </td>
                                     <td className="p-4">
                                         {!user.is_banned ? (
-                                            <button 
-                                                onClick={() => handleBanClick(user.id, user.display_name || 'Sin nombre', user.email)}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
-                                                title="Banear y desactivar usuario"
-                                            >
-                                                <Ban className="w-4 h-4" />
-                                                Banear
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => handleGrantCreditsClick(user.id, user.display_name || 'Sin nombre')}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
+                                                    title="Otorgar o devolver créditos"
+                                                >
+                                                    <Gift className="w-4 h-4" />
+                                                    Créditos
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleBanClick(user.id, user.display_name || 'Sin nombre', user.email)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
+                                                    title="Banear y desactivar usuario"
+                                                >
+                                                    <Ban className="w-4 h-4" />
+                                                    Banear
+                                                </button>
+                                            </div>
                                         ) : (
                                             <span className="text-xs text-slate-600 italic">Ya baneado</span>
                                         )}
@@ -264,6 +290,12 @@ export default function UsersPage() {
         cancelText="Cancelar"
         isDestructive={true}
         isLoading={isDeleting}
+      />
+
+      <GrantCreditsModal 
+        isOpen={!!userToGrantCredits}
+        onClose={() => setUserToGrantCredits(null)}
+        user={userToGrantCredits}
       />
     </>
   );
