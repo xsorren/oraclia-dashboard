@@ -195,7 +195,7 @@ export function FlashQuestionsTab() {
                                             )}
 
                                             <MobileCardActions>
-                                                {question.status === 'claimed' && (
+                                                {question.status !== 'open' && (
                                                     <button
                                                         onClick={() => setQuestionToReset(question.id)}
                                                         className="flex-1 flex items-center justify-center gap-2 py-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition text-sm"
@@ -280,7 +280,7 @@ export function FlashQuestionsTab() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1">
-                                                    {question.status === 'claimed' && (
+                                                    {question.status !== 'open' && (
                                                         <button
                                                             onClick={() => setQuestionToReset(question.id)}
                                                             className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition"
@@ -333,7 +333,7 @@ export function FlashQuestionsTab() {
                 onClose={() => setQuestionToReset(null)}
                 onConfirm={handleReset}
                 title="Resetear Pregunta Flash"
-                message="¿Estás seguro de resetear esta pregunta? Se cambiará el estado de 'reclamada' a 'abierta' y se quitará el tarotista asignado. La pregunta volverá a estar disponible en el feed para que otro tarotista la tome."
+                message="¿Estás seguro de resetear esta pregunta? Se revertirá a estado 'abierta', se quitará el tarotista asignado y se eliminarán las respuestas asociadas. La pregunta volverá a estar disponible en el feed para que otro tarotista la tome."
                 confirmText="Sí, resetear"
                 cancelText="Cancelar"
                 isLoading={resetMutation.isPending}
