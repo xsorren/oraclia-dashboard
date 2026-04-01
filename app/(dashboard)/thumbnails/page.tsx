@@ -34,7 +34,7 @@ export default function ThumbnailsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('reader_intro_video')
-      .select('*, reader_profiles(profiles(display_name, avatar_url))');
+      .select('*, reader_profiles(profiles(display_name, avatar_url))') as { data: any[] | null; error: any };
     
     if (data) {
       const patchedData = await Promise.all(
