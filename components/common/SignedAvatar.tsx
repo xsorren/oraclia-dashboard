@@ -16,24 +16,18 @@ interface SignedAvatarProps {
  *   se firma via edge function media-get-url y se usa la URL firmada.
  */
 export function SignedAvatar({ src, alt, className, fallback }: SignedAvatarProps) {
-  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  // Pair the signed URL with the src it was signed for, to avoid stale results
+  const [signingResult, setSigningResult] = useState<{ src: string; signedUrl: string } | null>(null);
 
   useEffect(() => {
-    if (!src) {
-      setResolvedSrc(null);
-      return;
-    }
+    // http URLs are handled through derivation below — no setState needed here
+    if (!src || src.startsWith('http')) return;
 
-    if (src.startsWith('http')) {
-      setResolvedSrc(src);
-      return;
-    }
-
-    // Relative path → sign via edge function
     const edgeFnUrl = process.env.NEXT_PUBLIC_EDGE_FUNCTIONS_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!edgeFnUrl || !anonKey) return;
 
+    let cancelled = false;
     fetch(`${edgeFnUrl}/media-get-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anonKey}` },
@@ -41,10 +35,19 @@ export function SignedAvatar({ src, alt, className, fallback }: SignedAvatarProp
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json?.signedUrl) setResolvedSrc(json.signedUrl);
+        if (!cancelled && json?.signedUrl) setSigningResult({ src, signedUrl: json.signedUrl });
       })
       .catch(() => {/* silently ignore */});
+
+    return () => { cancelled = true; };
   }, [src]);
+
+  // Derive the resolved URL without any synchronous setState:
+  // - Full http URLs used directly
+  // - Relative paths use signed URL only if it matches the current src (avoids stale)
+  const resolvedSrc = src?.startsWith('http')
+    ? src
+    : signingResult !== null && signingResult.src === src ? signingResult.signedUrl : null;
 
   if (!resolvedSrc) {
     return <>{fallback ?? null}</>;

@@ -59,6 +59,7 @@ export default function ThumbnailsPage() {
 
   useEffect(() => {
     fetchVideos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpload = async (readerId: string, file: File) => {

@@ -1,10 +1,10 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { useConfiguration } from '@/lib/hooks/useConfiguration';
 import { useGrantEntitlement } from '@/lib/hooks/useUsers';
 import { Gift, Loader2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useToast } from '@/components/ui/Toast';
 
 interface GrantCreditsModalProps {
   isOpen: boolean;
