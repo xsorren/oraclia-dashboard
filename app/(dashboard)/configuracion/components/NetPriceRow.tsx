@@ -22,11 +22,14 @@ export function NetPriceRow({ service, packs, onToast }: NetPriceRowProps) {
   const [usd, setUsd] = useState(String(service.prices?.USD ?? 0));
   const [eur, setEur] = useState(String(service.prices?.EUR ?? 0));
 
-  // Sync when data refreshes
+  // Sync when data refreshes after a successful mutation
   useEffect(() => {
     if (!editing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArs(String(service.prices?.ARS ?? 0));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsd(String(service.prices?.USD ?? 0));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEur(String(service.prices?.EUR ?? 0));
     }
   }, [service.prices, editing]);

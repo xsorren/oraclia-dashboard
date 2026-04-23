@@ -25,8 +25,11 @@ export function EditPackModal({ pack, netPriceArs, netPriceUsd, netPriceEur, onC
 
   useEffect(() => {
     if (pack) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArs(String(pack.price_ars));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsd(String(pack.price_usd));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEur(String(pack.price_eur));
     }
   }, [pack]);
