@@ -238,19 +238,34 @@ export interface Service {
   updated_at: string;
 }
 
+export interface ServicePack {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  service_kind: string;
+  quantity_units: number;
+  price_usd: number;
+  price_ars: number;
+  price_eur: number;
+  is_active: boolean;
+  currency: string;
+  metadata: {
+    reader_revenue?: number;
+    platform_revenue?: number;
+    total_price?: number;
+    reader_revenue_usd?: number;
+    platform_revenue_usd?: number;
+    reader_revenue_eur?: number;
+    platform_revenue_eur?: number;
+    discount_pct?: number;
+    [key: string]: unknown;
+  } | null;
+}
+
 export interface ConfigurationData {
   services: Service[];
-  packs: Array<{
-    id: string;
-    sku: string;
-    name: string;
-    description: string;
-    service_kind: string;
-    quantity_units: number;
-    price_usd: number;
-    price_ars: number;
-    price_eur: number;
-  }>;
+  packs: ServicePack[];
 }
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -663,6 +678,34 @@ export const adminApi = {
     adminFetch<ConfigurationData>('GET', 'admin-dashboard/configuration', {
       unwrapData: true,
       errorMessage: 'Error al obtener configuración',
+    }),
+
+  updateNetPrice: (serviceKind: string, prices: { price_ars: number; price_usd: number; price_eur: number }) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'PATCH', `admin-dashboard/configuration/net-price/${serviceKind}`, {
+      body: prices,
+      errorMessage: 'Error al actualizar precio neto',
+    }),
+
+  updatePack: (packId: string, prices: { price_ars: number; price_usd: number; price_eur: number }) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'PATCH', `admin-dashboard/configuration/pack/${packId}`, {
+      body: prices,
+      errorMessage: 'Error al actualizar pack',
+    }),
+
+  updatePackStatus: (packId: string, isActive: boolean) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'PATCH', `admin-dashboard/configuration/pack/${packId}/status`, {
+      body: { is_active: isActive },
+      errorMessage: 'Error al actualizar estado del pack',
+    }),
+
+  updateServiceStatus: (serviceId: string, isActive: boolean) =>
+    adminFetch<{ success: boolean; message: string }>(
+      'PATCH', `admin-dashboard/configuration/service/${serviceId}/status`, {
+      body: { is_active: isActive },
+      errorMessage: 'Error al actualizar estado del servicio',
     }),
 
   // Broadcast notifications
