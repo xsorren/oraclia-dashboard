@@ -263,9 +263,17 @@ export interface ServicePack {
   } | null;
 }
 
+export interface NetPrice {
+  service_kind: string;
+  price_ars: number;
+  price_usd: number;
+  price_eur: number;
+}
+
 export interface ConfigurationData {
   services: Service[];
   packs: ServicePack[];
+  net_prices: NetPrice[];
 }
 
 // ─── Shared types ─────────────────────────────────────────────────────────────

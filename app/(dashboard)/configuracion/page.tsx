@@ -6,7 +6,9 @@ import { Header } from '@/components/layout/Header';
 import { useToast } from '@/components/ui/Toast';
 import { useConfiguration } from '@/lib/hooks/useConfiguration';
 import { cn } from '@/lib/utils/cn';
-import { FREE_SERVICE_KINDS, getServiceEmoji, getServiceName } from '@/lib/utils/services';
+import { FREE_SERVICE_KINDS } from '@/lib/utils/services';
+import { formatCurrency } from '@/lib/utils/currency';
+import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
 import { Package2, Settings, Tag } from 'lucide-react';
 import { useState } from 'react';
 import { NetPriceRow } from './components/NetPriceRow';
@@ -24,24 +26,22 @@ export default function ConfiguracionPage() {
       id: 'net-prices',
       label: 'Ganancias del Tarotista',
       icon: <Tag className="w-4 h-4" />,
-      description: 'Precio base que recibe el tarotista por cada consulta',
+      description: 'Precio base que recibe el tarotista por cada consulta, independientemente del pack que compró el usuario',
     },
     {
       id: 'packs',
-      label: 'Paquetes de Venta',
+      label: 'Servicios y Paquetes',
       icon: <Package2 className="w-4 h-4" />,
-      description: 'Precios que pagan los usuarios al comprar servicios',
+      description: 'Precios que pagan los usuarios al comprar servicios, con variantes por cantidad y descuentos por volumen',
     },
   ];
 
-  // Services filtered for net prices tab (exclude free ones from editing)
-  const editableServices = (config?.services ?? []).filter(
-    s => !FREE_SERVICE_KINDS.has(s.slug) && !FREE_SERVICE_KINDS.has(s.kind)
-  );
-  const freeServices = (config?.services ?? []).filter(
-    s => FREE_SERVICE_KINDS.has(s.slug) || FREE_SERVICE_KINDS.has(s.kind)
-  );
-  const allServices = [...editableServices, ...freeServices];
+  // Use net_prices directly — services.kind is a different enum ('global'/'private')
+  // and does not match service_net_prices.service_kind
+  const netPrices = config?.net_prices ?? [];
+  const editableNetPrices = netPrices.filter(np => !FREE_SERVICE_KINDS.has(np.service_kind));
+  const freeNetPrices = netPrices.filter(np => FREE_SERVICE_KINDS.has(np.service_kind));
+  const allNetPrices = [...editableNetPrices, ...freeNetPrices];
 
   return (
     <>
@@ -59,11 +59,9 @@ export default function ConfiguracionPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl px-5 py-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">Servicios configurados</p>
-            <p className="text-2xl font-bold text-white mt-1">{config?.services.length ?? '—'}</p>
-            <p className="text-xs text-slate-500 mt-1">
-              {config?.services.filter(s => s.is_active).length ?? 0} activos
-            </p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">Tipos de servicio</p>
+            <p className="text-2xl font-bold text-white mt-1">{netPrices.length || '—'}</p>
+            <p className="text-xs text-slate-500 mt-1">{editableNetPrices.length} con precio configurable</p>
           </div>
           <div className="bg-slate-900/50 border border-slate-800 rounded-xl px-5 py-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider">Packs disponibles</p>
@@ -111,11 +109,11 @@ export default function ConfiguracionPage() {
         {/* Net prices tab */}
         {!isLoading && activeTab === 'net-prices' && (
           <>
-            {allServices.length === 0 ? (
+            {allNetPrices.length === 0 ? (
               <EmptyState
                 icon={Settings}
-                title="No se encontraron servicios"
-                description="No hay servicios configurados en el sistema"
+                title="No se encontraron precios"
+                description="No hay precios de servicio configurados en el sistema"
               />
             ) : (
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
@@ -138,15 +136,14 @@ export default function ConfiguracionPage() {
                         <th className="px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Precio USD</th>
                         <th className="px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Precio EUR</th>
                         <th className="px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Margen plataforma</th>
-                        <th className="px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Estado</th>
                         <th className="px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allServices.map(service => (
+                      {allNetPrices.map(np => (
                         <NetPriceRow
-                          key={service.id}
-                          service={service}
+                          key={np.service_kind}
+                          netPrice={np}
                           packs={config?.packs ?? []}
                           onToast={toast}
                         />
@@ -157,27 +154,13 @@ export default function ConfiguracionPage() {
 
                 {/* Mobile cards */}
                 <div className="md:hidden divide-y divide-slate-800/50">
-                  {allServices.map(service => {
-                    const isFree = FREE_SERVICE_KINDS.has(service.slug) || FREE_SERVICE_KINDS.has(service.kind);
+                  {allNetPrices.map(np => {
+                    const isFree = FREE_SERVICE_KINDS.has(np.service_kind);
                     return (
-                      <div key={service.id} className="px-4 py-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{getServiceEmoji(service.kind)}</span>
-                            <div>
-                              <p className="text-sm font-medium text-white">{service.name || getServiceName(service.kind)}</p>
-                              <p className="text-xs text-slate-500 font-mono">{service.kind}</p>
-                            </div>
-                          </div>
-                          {service.is_active ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                              Activo
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                              Inactivo
-                            </span>
-                          )}
+                      <div key={np.service_kind} className="px-4 py-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-xl">{getServiceEmoji(np.service_kind)}</span>
+                          <p className="text-sm font-medium text-white">{getServiceName(np.service_kind)}</p>
                         </div>
                         {isFree ? (
                           <p className="text-sm text-slate-500 italic">Servicio gratuito</p>
@@ -185,15 +168,15 @@ export default function ConfiguracionPage() {
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div className="bg-slate-800/50 rounded-lg px-2 py-2">
                               <p className="text-xs text-slate-500 mb-0.5">ARS</p>
-                              <p className="text-sm font-medium text-white">${service.prices?.ARS?.toLocaleString('es-AR') ?? 0}</p>
+                              <p className="text-sm font-medium text-white">{formatCurrency(np.price_ars, 'ARS')}</p>
                             </div>
                             <div className="bg-slate-800/50 rounded-lg px-2 py-2">
                               <p className="text-xs text-slate-500 mb-0.5">USD</p>
-                              <p className="text-sm font-medium text-white">${service.prices?.USD ?? 0}</p>
+                              <p className="text-sm font-medium text-white">{formatCurrency(np.price_usd, 'USD')}</p>
                             </div>
                             <div className="bg-slate-800/50 rounded-lg px-2 py-2">
                               <p className="text-xs text-slate-500 mb-0.5">EUR</p>
-                              <p className="text-sm font-medium text-white">€{service.prices?.EUR ?? 0}</p>
+                              <p className="text-sm font-medium text-white">{formatCurrency(np.price_eur, 'EUR')}</p>
                             </div>
                           </div>
                         )}

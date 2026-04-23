@@ -22,12 +22,13 @@ interface ServiceGroup {
 }
 
 function buildGroups(config: ConfigurationData): ServiceGroup[] {
+  // Use net_prices (service_net_prices table) — not services.kind which is a different enum
   const kindToNetPrice = new Map<string, { ars: number; usd: number; eur: number }>();
-  for (const svc of config.services) {
-    kindToNetPrice.set(svc.kind, {
-      ars: svc.prices?.ARS ?? 0,
-      usd: svc.prices?.USD ?? 0,
-      eur: svc.prices?.EUR ?? 0,
+  for (const np of config.net_prices ?? []) {
+    kindToNetPrice.set(np.service_kind, {
+      ars: np.price_ars,
+      usd: np.price_usd,
+      eur: np.price_eur,
     });
   }
 
@@ -89,10 +90,7 @@ function PackRow({ pack, netPriceArs, onEdit, onToast }: PackRowProps) {
     <tr className="border-b border-slate-800/30 hover:bg-slate-800/10 transition-colors">
       {/* Pack name */}
       <td className="px-5 py-3.5">
-        <div>
-          <p className="text-sm text-white font-medium">{pack.name}</p>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">{pack.sku}</p>
-        </div>
+        <p className="text-sm text-white font-medium">{pack.name}</p>
       </td>
 
       {/* Unidades */}
@@ -224,7 +222,6 @@ function ServiceGroupCard({ group, onEdit, onToast }: ServiceGroupCardProps) {
           <span className="text-2xl">{getServiceEmoji(group.serviceKind)}</span>
           <div>
             <h3 className="text-sm font-semibold text-white">{getServiceName(group.serviceKind)}</h3>
-            <p className="text-xs text-slate-500 font-mono mt-0.5">{group.serviceKind}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -287,9 +284,9 @@ export function PacksTab({ config, onToast }: PacksTabProps) {
 
   const groups = buildGroups(config);
 
-  // Find net prices for the editing pack's service
-  const editingService = editingPack
-    ? config.services.find(s => s.kind === editingPack.service_kind)
+  // Find net prices for the editing pack — use net_prices directly
+  const editingNetPrice = editingPack
+    ? (config.net_prices ?? []).find(np => np.service_kind === editingPack.service_kind)
     : null;
 
   if (groups.length === 0) {
@@ -317,9 +314,9 @@ export function PacksTab({ config, onToast }: PacksTabProps) {
 
       <EditPackModal
         pack={editingPack}
-        netPriceArs={editingService?.prices?.ARS ?? 0}
-        netPriceUsd={editingService?.prices?.USD ?? 0}
-        netPriceEur={editingService?.prices?.EUR ?? 0}
+        netPriceArs={editingNetPrice?.price_ars ?? 0}
+        netPriceUsd={editingNetPrice?.price_usd ?? 0}
+        netPriceEur={editingNetPrice?.price_eur ?? 0}
         onClose={() => setEditingPack(null)}
         onToast={onToast}
       />
