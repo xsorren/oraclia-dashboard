@@ -8,6 +8,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { useToast } from '@/components/ui/Toast';
+import type { FlashQuestion } from '@/lib/api/admin';
 import { useDeleteFlashQuestion, useFlashQuestions, useResetFlashQuestion } from '@/lib/hooks/useConsultas';
 import { formatDateTime, formatRelativeTime } from '@/lib/utils/dates';
 import type { LucideIcon } from 'lucide-react';
@@ -21,10 +22,12 @@ import {
     MessageSquare,
     RotateCcw,
     Search,
+    Send,
     User,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
+import { OwnerAnswerModal } from './OwnerAnswerModal';
 
 const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
     open: { label: 'Abierta', icon: Clock, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
@@ -42,6 +45,7 @@ export function FlashQuestionsTab() {
     const [status, setStatus] = useState('all');
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [questionToReset, setQuestionToReset] = useState<string | null>(null);
+    const [questionToAnswer, setQuestionToAnswer] = useState<FlashQuestion | null>(null);
 
     const { toast } = useToast();
     const { data, isLoading } = useFlashQuestions({ page, limit: 15, search, status });
@@ -195,6 +199,15 @@ export function FlashQuestionsTab() {
                                             )}
 
                                             <MobileCardActions>
+                                                {(question.status === 'open' || question.status === 'claimed') && (
+                                                    <button
+                                                        onClick={() => setQuestionToAnswer(question)}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-500/10 text-purple-300 hover:text-white hover:bg-purple-500/20 rounded-lg transition text-sm font-medium"
+                                                    >
+                                                        <Send className="w-4 h-4" />
+                                                        Responder
+                                                    </button>
+                                                )}
                                                 {question.status !== 'open' && (
                                                     <button
                                                         onClick={() => setQuestionToReset(question.id)}
@@ -280,6 +293,16 @@ export function FlashQuestionsTab() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1">
+                                                    {(question.status === 'open' || question.status === 'claimed') && (
+                                                        <button
+                                                            onClick={() => setQuestionToAnswer(question)}
+                                                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-500/10 text-purple-300 hover:text-white hover:bg-purple-500/20 rounded-lg transition text-xs font-medium"
+                                                            title="Responder esta pregunta"
+                                                        >
+                                                            <Send className="w-3.5 h-3.5" />
+                                                            Responder
+                                                        </button>
+                                                    )}
                                                     {question.status !== 'open' && (
                                                         <button
                                                             onClick={() => setQuestionToReset(question.id)}
@@ -338,6 +361,13 @@ export function FlashQuestionsTab() {
                 cancelText="Cancelar"
                 isLoading={resetMutation.isPending}
             />
+
+            {questionToAnswer && (
+                <OwnerAnswerModal
+                    question={questionToAnswer}
+                    onClose={() => setQuestionToAnswer(null)}
+                />
+            )}
         </div>
     );
 }

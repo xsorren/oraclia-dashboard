@@ -78,32 +78,36 @@ export function EditPackModal({ pack, netPriceArs, netPriceUsd, netPriceEur, onC
     'w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-colors placeholder:text-slate-600';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex-shrink-0">
               <Package className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-semibold text-white">Editar Pack</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
                 {getServiceEmoji(pack.service_kind)} {getServiceName(pack.service_kind)} · ×{pack.quantity_units}
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors"
+            disabled={isPending}
+            className="p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+            aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* Pack info */}
           <div className="px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
             <p className="text-xs text-slate-400">SKU: <span className="font-mono text-slate-300">{pack.sku}</span></p>
@@ -111,7 +115,7 @@ export function EditPackModal({ pack, netPriceArs, netPriceUsd, netPriceEur, onC
           </div>
 
           {/* Price inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">Precio ARS</label>
               <div className="relative">
@@ -212,21 +216,22 @@ export function EditPackModal({ pack, netPriceArs, netPriceUsd, netPriceEur, onC
               </div>
             </div>
           )}
+          </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-1">
+          {/* Actions — sticky footer */}
+          <div className="flex gap-3 p-4 sm:p-6 border-t border-slate-800 bg-slate-900 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition font-medium text-sm disabled:opacity-50"
+              className="flex-1 min-h-[44px] sm:min-h-[40px] px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition font-medium text-sm disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending || hasError}
-              className="flex-[2] flex justify-center items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-[2] min-h-[44px] sm:min-h-[40px] flex justify-center items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</>

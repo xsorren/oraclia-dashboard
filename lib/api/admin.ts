@@ -773,4 +773,142 @@ export const adminApi = {
       body: { status: params.status, resolution_notes: params.resolution_notes },
       errorMessage: 'Error al actualizar reporte Flash',
     }),
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Owner emergency takeover for flash questions
+  //
+  // Owner clicks "Responder" on a flash question → 3 calls to the backend:
+  //   1. flashOwnerTakeover()   — claim the question for the owner
+  //   2. flashUploadAnswerMedia() — upload an image (signed URL flow)
+  //   3. flashAnswerQuestion()  — submit the body + storage paths
+  //
+  // The first call hits the dedicated `flash-owner-takeover` Edge Function
+  // (gated by email = OWNER_EMAIL), the latter two reuse the same endpoints
+  // the mobile app uses for the regular tarotista answer flow.
+  // ────────────────────────────────────────────────────────────────────────
+
+  flashOwnerTakeover: async (params: { questionId: string; reason?: string }) => {
+    const token = await getAuthToken();
+    const response = await fetch(`${EDGE_FUNCTIONS_URL}/flash-owner-takeover`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question_id: params.questionId,
+        reason: params.reason,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json?.error?.message || json?.message || 'Error al tomar la pregunta');
+      } catch {
+        throw new Error(text || 'Error al tomar la pregunta');
+      }
+    }
+
+    const json = await response.json();
+    return json.data as {
+      question_id: string;
+      session_id: string;
+      reader_id: string;
+      claimed_at: string;
+      rotation_round: number;
+    };
+  },
+
+  flashUploadAnswerMedia: async (params: { file: File; serviceSlug: string }) => {
+    const token = await getAuthToken();
+
+    // 1. Request signed upload URL
+    const signResponse = await fetch(`${EDGE_FUNCTIONS_URL}/media-sign-upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        scope: 'global_answer',
+        service_slug: params.serviceSlug,
+        files: [
+          {
+            file_name: params.file.name,
+            media_kind: 'image',
+            mime: params.file.type || 'image/jpeg',
+          },
+        ],
+      }),
+    });
+
+    if (!signResponse.ok) {
+      const text = await signResponse.text();
+      throw new Error(text || 'Error al solicitar URL de subida');
+    }
+
+    const signJson = await signResponse.json();
+    const signed = (signJson?.data?.files ?? signJson?.files ?? signJson?.signed ?? []) as Array<{
+      storage_path: string;
+      upload_url: string;
+      token?: string;
+    }>;
+
+    if (!signed.length || !signed[0].upload_url || !signed[0].storage_path) {
+      throw new Error('Respuesta inválida del servidor de subidas');
+    }
+
+    const target = signed[0];
+
+    // 2. Upload the file to the signed URL
+    const uploadResponse = await fetch(target.upload_url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': params.file.type || 'image/jpeg',
+        ...(target.token ? { Authorization: `Bearer ${target.token}` } : {}),
+      },
+      body: params.file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Error al subir la imagen');
+    }
+
+    return target.storage_path;
+  },
+
+  flashAnswerQuestion: async (params: {
+    sessionId: string;
+    bodyText: string;
+    storagePaths: string[];
+  }) => {
+    const token = await getAuthToken();
+    const response = await fetch(`${EDGE_FUNCTIONS_URL}/global-questions-answer`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_id: params.sessionId,
+        body_text: params.bodyText,
+        storage_paths: params.storagePaths,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json?.error?.message || json?.message || 'Error al enviar la respuesta');
+      } catch {
+        throw new Error(text || 'Error al enviar la respuesta');
+      }
+    }
+
+    const json = await response.json();
+    return json.data;
+  },
 };

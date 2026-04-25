@@ -56,6 +56,59 @@ export function useResetFlashQuestion() {
 }
 
 // ---------------------------------------------------------------------------
+// Owner emergency takeover + answer
+//
+// Three-step flow wrapped in a single mutation so the modal can show a
+// unified loading state. Order:
+//   1. takeover — claims the question for the dashboard owner
+//   2. (optional) media upload — single image via signed URL
+//   3. answer   — body text + storage paths
+// ---------------------------------------------------------------------------
+
+interface OwnerAnswerInput {
+  questionId: string;
+  bodyText: string;
+  /** Optional image attachment. The dashboard composer is single-image. */
+  imageFile?: File | null;
+  /** Used to scope the storage upload bucket; defaults to 'flash_1carta'. */
+  serviceSlug?: string;
+  reason?: string;
+}
+
+export function useOwnerAnswerFlashQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: OwnerAnswerInput) => {
+      const takeover = await adminApi.flashOwnerTakeover({
+        questionId: input.questionId,
+        reason: input.reason,
+      });
+
+      const storagePaths: string[] = [];
+      if (input.imageFile) {
+        const path = await adminApi.flashUploadAnswerMedia({
+          file: input.imageFile,
+          serviceSlug: input.serviceSlug ?? 'flash_1carta',
+        });
+        storagePaths.push(path);
+      }
+
+      await adminApi.flashAnswerQuestion({
+        sessionId: takeover.session_id,
+        bodyText: input.bodyText,
+        storagePaths,
+      });
+
+      return takeover;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Private Consultations
 // ---------------------------------------------------------------------------
 export function usePrivateConsultations(params: {
