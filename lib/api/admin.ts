@@ -308,8 +308,10 @@ export interface PrivateConsultation {
   created_at: string;
   message_count: number;
   user?: {
+    id?: string;
     display_name: string;
     avatar_url?: string | null;
+    email?: string | null;
   };
   reader?: {
     display_name: string;

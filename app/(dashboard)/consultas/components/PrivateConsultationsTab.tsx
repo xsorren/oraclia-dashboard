@@ -121,8 +121,13 @@ export function PrivateConsultationsTab() {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="text-sm font-medium text-white truncate">
-                                                            {consultation.user?.display_name || 'Desconocido'}
+                                                            {consultation.user?.display_name || 'Sin nombre'}
                                                         </div>
+                                                        {consultation.user?.email && (
+                                                            <div className="text-xs text-slate-400 truncate">
+                                                                {consultation.user.email}
+                                                            </div>
+                                                        )}
                                                         <div className="text-xs text-purple-400 mt-0.5">
                                                             {serviceKinds[consultation.service_kind] || consultation.service_kind}
                                                         </div>
@@ -183,8 +188,15 @@ export function PrivateConsultationsTab() {
                                                             fallback={<User className="w-4 h-4 text-slate-400" />}
                                                         />
                                                     </div>
-                                                    <div className="text-sm font-medium text-white">
-                                                        {consultation.user?.display_name || 'Desconocido'}
+                                                    <div>
+                                                        <div className="text-sm font-medium text-white">
+                                                            {consultation.user?.display_name || 'Sin nombre'}
+                                                        </div>
+                                                        {consultation.user?.email && (
+                                                            <div className="text-xs text-slate-400 truncate max-w-[200px]">
+                                                                {consultation.user.email}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
