@@ -12,8 +12,9 @@ import type {
 } from '@/lib/api/admin';
 import { useClientDetail } from '@/lib/hooks/useClients';
 import { formatCurrency } from '@/lib/utils/currency';
-import type { Currency } from '@/types/database';
 import { formatDateTime, formatRelativeTime } from '@/lib/utils/dates';
+import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
+import type { Currency } from '@/types/database';
 import {
     Activity,
     AlertCircle,
@@ -91,7 +92,11 @@ export function ClientDetailModal({ clientId, onClose }: Props) {
                         <TabBar activeTab={activeTab} onChange={setActiveTab} />
                         <div className="overflow-y-auto flex-1 px-6 py-5">
                             {activeTab === 'resumen' && (
-                                <ResumenTab profile={detail.data.profile} stats={detail.data.stats} />
+                                <ResumenTab
+                                    profile={detail.data.profile}
+                                    stats={detail.data.stats}
+                                    entitlements={detail.data.entitlements}
+                                />
                             )}
                             {activeTab === 'compras' && (
                                 <ComprasTab payments={detail.data.payments} />
@@ -200,7 +205,20 @@ function TabBar({
 }
 
 // ── Tab: Resumen ──────────────────────────────────────────────────────────
-function ResumenTab({ profile, stats }: { profile: ClientProfile; stats: ClientStats }) {
+function ResumenTab({
+    profile,
+    stats,
+    entitlements,
+}: {
+    profile: ClientProfile;
+    stats: ClientStats;
+    entitlements: ClientEntitlement[];
+}) {
+    // Breakdown de créditos disponibles por categoría (Flash / Privadas / Otros).
+    // Útil cuando un cliente tiene varios tipos: "5 disp." es ambiguo, pero
+    // "3 Flash · 2 Privadas" deja claro qué puede usar.
+    const breakdown = summarizeAvailableCredits(entitlements);
+
     return (
         <div className="space-y-6">
             {/* KPIs */}
@@ -219,8 +237,9 @@ function ResumenTab({ profile, stats }: { profile: ClientProfile; stats: ClientS
                 />
                 <StatCard
                     icon={Sparkles}
-                    label="Créditos disp."
+                    label="Créditos disponibles"
                     value={stats.total_remaining_units}
+                    subtitle={breakdown.subtitle}
                     color="amber"
                 />
                 <StatCard
@@ -352,37 +371,94 @@ function CreditosTab({
     entitlements: ClientEntitlement[];
     ledger: ClientLedgerEntry[];
 }) {
-    const activeEntitlements = entitlements.filter((e) => !e.is_expired);
+    // Tres grupos: disponibles (con remaining > 0 y no expirados), usados
+    // (remaining = 0, no expirados — el cliente los compró y consumió todo)
+    // y expirados (collapsible, generalmente raro).
+    const availableEntitlements = entitlements.filter(
+        (e) => !e.is_expired && e.remaining_units > 0,
+    );
+    const usedEntitlements = entitlements.filter(
+        (e) => !e.is_expired && e.remaining_units === 0,
+    );
     const expiredEntitlements = entitlements.filter((e) => e.is_expired);
+
+    const breakdown = summarizeAvailableCredits(entitlements);
 
     return (
         <div className="space-y-6">
-            {/* Active entitlements */}
+            {/* Resumen rápido por categoría */}
+            {breakdown.totalAvailable > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {breakdown.byCategory.map((b) => (
+                        <div
+                            key={b.category}
+                            className="p-3 bg-slate-800/40 border border-slate-700 rounded-lg flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xl">{b.emoji}</span>
+                                <span className="text-sm text-slate-300 truncate">{b.label}</span>
+                            </div>
+                            <span className="text-lg font-bold text-white shrink-0">
+                                {b.count}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Disponibles (los que el cliente puede usar AHORA) */}
             <div>
                 <h4 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
-                    <Package className="w-4 h-4" />
-                    Créditos activos
+                    <Package className="w-4 h-4 text-emerald-400" />
+                    Disponibles
+                    {availableEntitlements.length > 0 && (
+                        <span className="text-xs text-slate-500 font-normal">
+                            ({availableEntitlements.length})
+                        </span>
+                    )}
                 </h4>
-                {activeEntitlements.length === 0 ? (
-                    <Empty message="Sin créditos activos." icon={Package} compact />
+                {availableEntitlements.length === 0 ? (
+                    <Empty message="Este cliente no tiene créditos disponibles." icon={Package} compact />
                 ) : (
                     <div className="space-y-2">
-                        {activeEntitlements.map((e) => (
-                            <EntitlementRow key={e.id} entitlement={e} />
+                        {availableEntitlements.map((e) => (
+                            <EntitlementRow key={e.id} entitlement={e} status="available" />
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Expired */}
+            {/* Usados (ya consumidos pero no expirados) */}
+            {usedEntitlements.length > 0 && (
+                <details className="group">
+                    <summary className="text-sm font-semibold text-slate-400 cursor-pointer hover:text-slate-300 flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Usados ({usedEntitlements.length})
+                        <span className="text-xs text-slate-500 font-normal group-open:hidden">
+                            — click para ver
+                        </span>
+                    </summary>
+                    <div className="space-y-2 mt-2">
+                        {usedEntitlements.map((e) => (
+                            <EntitlementRow key={e.id} entitlement={e} status="used" />
+                        ))}
+                    </div>
+                </details>
+            )}
+
+            {/* Expirados */}
             {expiredEntitlements.length > 0 && (
-                <details>
-                    <summary className="text-sm font-semibold text-slate-400 mb-2 cursor-pointer hover:text-slate-300">
-                        Créditos expirados ({expiredEntitlements.length})
+                <details className="group">
+                    <summary className="text-sm font-semibold text-slate-400 cursor-pointer hover:text-slate-300 flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4" />
+                        Expirados ({expiredEntitlements.length})
+                        <span className="text-xs text-slate-500 font-normal group-open:hidden">
+                            — click para ver
+                        </span>
                     </summary>
                     <div className="space-y-2 mt-2">
                         {expiredEntitlements.map((e) => (
-                            <EntitlementRow key={e.id} entitlement={e} expired />
+                            <EntitlementRow key={e.id} entitlement={e} status="expired" />
                         ))}
                     </div>
                 </details>
@@ -433,58 +509,77 @@ function CreditosTab({
 
 function EntitlementRow({
     entitlement,
-    expired,
+    status,
 }: {
     entitlement: ClientEntitlement;
-    expired?: boolean;
+    status: 'available' | 'used' | 'expired';
 }) {
-    const used = entitlement.total_purchased - entitlement.remaining_units;
-    const pct = entitlement.total_purchased > 0
-        ? Math.round((used / entitlement.total_purchased) * 100)
-        : 0;
+    const serviceKind = entitlement.service_kind ?? '';
+    const serviceLabel = serviceKind ? getServiceName(serviceKind) : (entitlement.pack_name ?? entitlement.pack_sku);
+    const emoji = serviceKind ? getServiceEmoji(serviceKind) : '🎫';
+
+    // Para packs unitarios (1 unit) y para los multi-unit, mostramos un texto
+    // claro en vez de la barra de progreso. La barra confundía con
+    // "0/1" cuando en realidad significaba "0 disponibles de 1 comprado".
+    let statusBadge: { label: string; tone: string };
+    let countLine: string;
+
+    if (status === 'available') {
+        statusBadge = {
+            label: entitlement.remaining_units === 1 ? 'Disponible' : `${entitlement.remaining_units} disponibles`,
+            tone: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+        };
+        countLine = entitlement.total_purchased > 1
+            ? `${entitlement.remaining_units} de ${entitlement.total_purchased} sin usar`
+            : 'Sin usar';
+    } else if (status === 'used') {
+        statusBadge = {
+            label: 'Usado',
+            tone: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
+        };
+        countLine = entitlement.total_purchased > 1
+            ? `${entitlement.total_purchased} de ${entitlement.total_purchased} consumidos`
+            : 'Consumido';
+    } else {
+        statusBadge = {
+            label: 'Expirado',
+            tone: 'bg-red-500/15 text-red-400 border-red-500/20',
+        };
+        countLine = `Vencido el ${formatDateTime(entitlement.expires_at!)}`;
+    }
+
     return (
         <div
             className={`p-3 rounded-lg border ${
-                expired
-                    ? 'bg-slate-800/20 border-slate-800 opacity-60'
-                    : 'bg-slate-800/40 border-slate-700'
+                status === 'expired'
+                    ? 'bg-slate-800/20 border-slate-800 opacity-70'
+                    : status === 'used'
+                        ? 'bg-slate-800/30 border-slate-800'
+                        : 'bg-slate-800/40 border-slate-700'
             }`}
         >
-            <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="min-w-0">
-                    <div className="text-white text-sm font-medium truncate">
-                        {entitlement.pack_name ?? entitlement.pack_sku}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                        {entitlement.service_kind} · adquirido{' '}
-                        {formatDateTime(entitlement.purchased_at)}
-                    </div>
-                </div>
-                <div className="text-right shrink-0">
-                    <div className="text-sm">
-                        <span className="text-white font-bold">{entitlement.remaining_units}</span>
-                        <span className="text-slate-500"> / {entitlement.total_purchased}</span>
-                    </div>
-                    {entitlement.expires_at && (
-                        <div className="text-xs text-slate-500">
-                            Expira {formatDateTime(entitlement.expires_at)}
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                    <div className="text-2xl shrink-0 leading-none mt-0.5">{emoji}</div>
+                    <div className="min-w-0">
+                        <div className="text-white text-sm font-medium truncate">
+                            {serviceLabel}
                         </div>
-                    )}
+                        <div className="text-xs text-slate-500 mt-0.5">
+                            {countLine} · comprado {formatDateTime(entitlement.purchased_at)}
+                        </div>
+                        {status === 'available' && entitlement.expires_at && (
+                            <div className="text-[11px] text-amber-400 mt-0.5 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> Vence {formatDateTime(entitlement.expires_at)}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden">
-                <div
-                    className={`h-full transition-all ${
-                        expired
-                            ? 'bg-slate-600'
-                            : pct < 50
-                                ? 'bg-emerald-500'
-                                : pct < 90
-                                    ? 'bg-amber-500'
-                                    : 'bg-red-500'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                />
+                <span
+                    className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-wide shrink-0 ${statusBadge.tone}`}
+                >
+                    {statusBadge.label}
+                </span>
             </div>
         </div>
     );
@@ -587,11 +682,13 @@ function StatCard({
     icon: Icon,
     label,
     value,
+    subtitle,
     color,
 }: {
     icon: typeof Activity;
     label: string;
     value: string | number;
+    subtitle?: string;
     color: 'purple' | 'emerald' | 'amber' | 'blue';
 }) {
     const colorMap = {
@@ -605,6 +702,11 @@ function StatCard({
             <Icon className="w-4 h-4 mb-1.5" />
             <div className="text-xs opacity-70">{label}</div>
             <div className="text-lg font-bold text-white truncate">{value}</div>
+            {subtitle && (
+                <div className="text-[10px] opacity-60 mt-0.5 truncate" title={subtitle}>
+                    {subtitle}
+                </div>
+            )}
         </div>
     );
 }
@@ -693,6 +795,50 @@ function consultationStatusColor(status: string): string {
         default:
             return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
     }
+}
+
+// ── Resumen de créditos disponibles agrupados por categoría ──────────────
+type CreditCategory = 'flash' | 'private' | 'other';
+
+function classifyServiceKind(serviceKind: string | null | undefined): CreditCategory {
+    if (!serviceKind) return 'other';
+    if (serviceKind.startsWith('flash_')) return 'flash';
+    if (
+        serviceKind === 'privada_3cartas' ||
+        serviceKind === 'extensa_5cartas' ||
+        serviceKind.startsWith('lectura_')
+    ) return 'private';
+    return 'other';
+}
+
+const CATEGORY_META: Record<CreditCategory, { emoji: string; label: string; sortIndex: number }> = {
+    flash:   { emoji: '⚡', label: 'Flash',    sortIndex: 0 },
+    private: { emoji: '💬', label: 'Privadas', sortIndex: 1 },
+    other:   { emoji: '🔮', label: 'Otros',    sortIndex: 2 },
+};
+
+function summarizeAvailableCredits(entitlements: ClientEntitlement[]): {
+    totalAvailable: number;
+    subtitle: string;
+    byCategory: Array<{ category: CreditCategory; emoji: string; label: string; count: number }>;
+} {
+    const counts: Record<CreditCategory, number> = { flash: 0, private: 0, other: 0 };
+    for (const e of entitlements) {
+        if (e.is_expired || e.remaining_units <= 0) continue;
+        counts[classifyServiceKind(e.service_kind)] += e.remaining_units;
+    }
+
+    const totalAvailable = counts.flash + counts.private + counts.other;
+    const byCategory = (Object.keys(counts) as CreditCategory[])
+        .filter((k) => counts[k] > 0)
+        .sort((a, b) => CATEGORY_META[a].sortIndex - CATEGORY_META[b].sortIndex)
+        .map((k) => ({ category: k, ...CATEGORY_META[k], count: counts[k] }));
+
+    const subtitle = byCategory.length > 0
+        ? byCategory.map((b) => `${b.count} ${b.label}`).join(' · ')
+        : 'Sin créditos activos';
+
+    return { totalAvailable, subtitle, byCategory };
 }
 
 // ── Ledger entry → human description ─────────────────────────────────────
