@@ -961,7 +961,17 @@ export const adminApi = {
     }
 
     const signJson = await signResponse.json();
-    const signed = (signJson?.data?.files ?? signJson?.files ?? signJson?.signed ?? []) as Array<{
+    // The media-sign-upload edge function returns the array under
+    // `data.uploads` (see media-sign-upload/index.ts). Older code paths
+    // used `data.files`/`signed` — keep them as fallbacks just in case.
+    const signed = (
+      signJson?.data?.uploads
+      ?? signJson?.uploads
+      ?? signJson?.data?.files
+      ?? signJson?.files
+      ?? signJson?.signed
+      ?? []
+    ) as Array<{
       storage_path: string;
       upload_url: string;
       token?: string;
