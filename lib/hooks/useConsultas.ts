@@ -70,7 +70,12 @@ interface OwnerAnswerInput {
   bodyText: string;
   /** Optional image attachment. The dashboard composer is single-image. */
   imageFile?: File | null;
-  /** Used to scope the storage upload bucket; defaults to 'flash_1carta'. */
+  /**
+   * Used to scope the storage upload bucket; defaults to 'pregunta-flash'
+   * (the canonical services.slug for the global flash service — NOT to be
+   * confused with the service_kind 'flash_1carta' which lives on
+   * consultation_sessions.service_kind, not on services.slug).
+   */
   serviceSlug?: string;
   reason?: string;
 }
@@ -99,7 +104,7 @@ export function useOwnerAnswerFlashQuestion() {
         if (input.imageFile) {
           const path = await adminApi.flashUploadAnswerMedia({
             file: input.imageFile,
-            serviceSlug: input.serviceSlug ?? 'flash_1carta',
+            serviceSlug: input.serviceSlug ?? 'pregunta-flash',
           });
           storagePaths.push(path);
         }
