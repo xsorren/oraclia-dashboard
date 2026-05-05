@@ -21,6 +21,7 @@ import {
     Clock,
     CreditCard,
     DollarSign,
+    Eye,
     Gift,
     Mail,
     MapPin,
@@ -28,7 +29,9 @@ import {
     Package,
     Receipt,
     ShieldOff,
+    ShoppingCart,
     Sparkles,
+    Undo2,
     User,
     X,
     Zap,
@@ -395,45 +398,32 @@ function CreditosTab({
                     <Empty message="Sin movimientos registrados." icon={Activity} compact />
                 ) : (
                     <div className="space-y-1.5">
-                        {ledger.map((entry) => (
-                            <div
-                                key={entry.id}
-                                className="px-3 py-2 bg-slate-800/30 border border-slate-800 rounded-lg flex items-center justify-between gap-3 text-sm"
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div
-                                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                                            entry.entry_type === 'credit'
-                                                ? 'bg-emerald-500/15 text-emerald-400'
-                                                : 'bg-amber-500/15 text-amber-400'
-                                        }`}
-                                    >
-                                        {entry.entry_type === 'credit' ? (
-                                            <Gift className="w-3 h-3" />
-                                        ) : (
-                                            <Zap className="w-3 h-3" />
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="text-slate-200 truncate">
-                                            {entry.ref_type.replace(/_/g, ' ')}
-                                        </div>
-                                        <div className="text-xs text-slate-500">
-                                            {formatDateTime(entry.created_at)}
-                                        </div>
-                                    </div>
-                                </div>
-                                <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-medium ${
-                                        entry.entry_type === 'credit'
-                                            ? 'bg-emerald-500/15 text-emerald-400'
-                                            : 'bg-amber-500/15 text-amber-400'
-                                    }`}
+                        {ledger.map((entry) => {
+                            const desc = describeLedgerEntry(entry);
+                            const Icon = desc.icon;
+                            const tone = TONE_STYLES[desc.tone];
+                            return (
+                                <div
+                                    key={entry.id}
+                                    className="px-3 py-2 bg-slate-800/30 border border-slate-800 rounded-lg flex items-center justify-between gap-3 text-sm"
                                 >
-                                    {entry.entry_type}
-                                </span>
-                            </div>
-                        ))}
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${tone}`}>
+                                            <Icon className="w-3 h-3" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-slate-200 truncate">{desc.label}</div>
+                                            <div className="text-xs text-slate-500">
+                                                {formatDateTime(entry.created_at)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-medium ${tone}`}>
+                                        {desc.badge}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -702,6 +692,69 @@ function consultationStatusColor(status: string): string {
             return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
         default:
             return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
+    }
+}
+
+// ── Ledger entry → human description ─────────────────────────────────────
+//
+// Traduce los `ref_type` técnicos del ledger a etiquetas legibles para el
+// dueño de la app. Los ref_type relevantes para clientes son los pack_*
+// (compras y consumos). Los otros (claim_question, answer_submitted,
+// dm_message) solo aparecen en cuentas de tarotistas pero los manejamos
+// igual por si se abre el modal sobre una cuenta tarotista.
+type LedgerTone = 'success' | 'warn' | 'info' | 'danger' | 'neutral';
+
+const TONE_STYLES: Record<LedgerTone, string> = {
+    success: 'bg-emerald-500/15 text-emerald-400',
+    warn:    'bg-amber-500/15 text-amber-400',
+    info:    'bg-blue-500/15 text-blue-400',
+    danger:  'bg-red-500/15 text-red-400',
+    neutral: 'bg-slate-500/15 text-slate-400',
+};
+
+function describeLedgerEntry(entry: ClientLedgerEntry): {
+    label: string;
+    badge: string;
+    tone: LedgerTone;
+    icon: typeof Activity;
+} {
+    switch (entry.ref_type) {
+        // ── Compras (credits)
+        case 'pack_purchase_mp':
+            return { label: 'Compra (Mercado Pago)', badge: 'Compra', tone: 'success', icon: ShoppingCart };
+        case 'pack_purchase_paypal':
+            return { label: 'Compra (PayPal)', badge: 'Compra', tone: 'success', icon: ShoppingCart };
+        case 'pack_purchase_astropay':
+            return { label: 'Compra (AstroPay)', badge: 'Compra', tone: 'success', icon: ShoppingCart };
+
+        // ── Consumos (debits)
+        case 'pack_consume_flash':
+            return { label: 'Pregunta Flash usada', badge: 'Consumo', tone: 'info', icon: Zap };
+        case 'pack_consume_private':
+            return { label: 'Consulta privada usada', badge: 'Consumo', tone: 'info', icon: MessageSquare };
+
+        // ── Reembolsos / cancelaciones
+        case 'pack_refund_mp':
+            return { label: 'Reembolso Mercado Pago', badge: 'Reembolso', tone: 'danger', icon: Undo2 };
+        case 'consultation_cancel':
+            return { label: 'Cancelación con devolución', badge: 'Cancelación', tone: 'warn', icon: Undo2 };
+
+        // ── Acciones de tarotista (no afectan créditos del cliente)
+        case 'claim_question':
+            return { label: 'Pregunta Flash reclamada', badge: 'Reclamó', tone: 'neutral', icon: Eye };
+        case 'answer_submitted':
+            return { label: 'Respuesta enviada', badge: 'Respondió', tone: 'success', icon: CheckCircle2 };
+        case 'dm_message':
+            return { label: 'Mensaje en consulta privada', badge: 'Mensaje', tone: 'neutral', icon: MessageSquare };
+
+        // ── Fallback para ref_types nuevos
+        default:
+            return {
+                label: entry.ref_type.replace(/_/g, ' '),
+                badge: entry.entry_type === 'credit' ? 'Crédito' : 'Débito',
+                tone: entry.entry_type === 'credit' ? 'success' : 'info',
+                icon: entry.entry_type === 'credit' ? Gift : Zap,
+            };
     }
 }
 
