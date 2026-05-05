@@ -1,6 +1,7 @@
 'use client';
 
 import { ChatViewer } from '@/components/chat/ChatViewer';
+import { ClientDetailModal } from '@/components/clients/ClientDetailModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
@@ -59,10 +60,19 @@ export default function ConsultasPrivadasPage() {
   
   // Selection State
   const [selectedConsultation, setSelectedConsultation] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   // const { toast } = useToast();
 
   const { data, isLoading } = usePrivateConsultations({ page, limit: 15, search, status, serviceKind });
+
+  // Open client modal without bubbling to the row click (which opens the
+  // consultation detail). Disabled when the consultation has no user_id
+  // resolved (legacy data or anonymized accounts).
+  const handleClientClick = (e: React.MouseEvent, clientId: string | null | undefined) => {
+    e.stopPropagation();
+    if (clientId) setSelectedClientId(clientId);
+  };
 
   // Query for details when selected
   const { data: detailData, isLoading: isLoadingDetail } = useConsultationDetail(selectedConsultation);
@@ -145,7 +155,13 @@ export default function ConsultasPrivadasPage() {
                                         onClick={() => setSelectedConsultation(consultation.id)}
                                     >
                                         <MobileCardHeader>
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleClientClick(e, consultation.user?.id)}
+                                                disabled={!consultation.user?.id}
+                                                className="flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-slate-800 transition disabled:cursor-default"
+                                                title={consultation.user?.id ? 'Ver perfil del cliente' : undefined}
+                                            >
                                                 <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                     <SignedAvatar
                                                         src={consultation.user?.avatar_url}
@@ -155,7 +171,7 @@ export default function ConsultasPrivadasPage() {
                                                     />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="text-sm font-medium text-white truncate">
+                                                    <div className="text-sm font-medium text-white truncate hover:text-purple-300 transition">
                                                         {consultation.user?.display_name || 'Sin nombre'}
                                                     </div>
                                                     {consultation.user?.email && (
@@ -167,7 +183,7 @@ export default function ConsultasPrivadasPage() {
                                                         {formatRelativeTime(consultation.created_at)}
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </button>
                                             <ChevronRight className="w-5 h-5 text-slate-500 flex-shrink-0" />
                                         </MobileCardHeader>
 
@@ -234,7 +250,13 @@ export default function ConsultasPrivadasPage() {
                                     onClick={() => setSelectedConsultation(consultation.id)}
                                 >
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleClientClick(e, consultation.user?.id)}
+                                            disabled={!consultation.user?.id}
+                                            className="flex items-center gap-3 text-left -mx-1 px-1 py-1 rounded-lg hover:bg-slate-800/60 transition disabled:cursor-default"
+                                            title={consultation.user?.id ? 'Ver perfil del cliente' : undefined}
+                                        >
                                             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
                                                 <SignedAvatar
                                                     src={consultation.user?.avatar_url}
@@ -244,7 +266,7 @@ export default function ConsultasPrivadasPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-white">
+                                                <div className="text-sm font-medium text-white hover:text-purple-300 transition">
                                                     {consultation.user?.display_name || 'Sin nombre'}
                                                 </div>
                                                 {consultation.user?.email && (
@@ -256,7 +278,7 @@ export default function ConsultasPrivadasPage() {
                                                     {consultation.message_count} msgs
                                                 </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     </td>
                                     <td className="px-6 py-4">
                                         {consultation.reader ? (
@@ -398,6 +420,13 @@ export default function ConsultasPrivadasPage() {
             <EmptyState title="Error" description="No se pudo cargar el detalle" icon={AlertCircle} />
         )}
       </SlideOver>
+
+      {selectedClientId && (
+        <ClientDetailModal
+          clientId={selectedClientId}
+          onClose={() => setSelectedClientId(null)}
+        />
+      )}
     </>
   );
 }
