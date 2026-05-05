@@ -885,13 +885,25 @@ export const adminApi = {
     sessionId: string;
     bodyText: string;
     storagePaths: string[];
+    /**
+     * Idempotency key for retry safety. If a request with the same key
+     * succeeds and the client retries (e.g. network timeout), the backend
+     * returns the previously-created answer instead of erroring on the
+     * UNIQUE(question_id) constraint.
+     *
+     * If omitted, a random UUID is generated — fine for a single attempt
+     * but callers that may retry should supply a stable key.
+     */
+    idempotencyKey?: string;
   }) => {
     const token = await getAuthToken();
+    const idempotencyKey = params.idempotencyKey ?? crypto.randomUUID();
     const response = await fetch(`${EDGE_FUNCTIONS_URL}/global-questions-answer`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify({
         session_id: params.sessionId,
@@ -912,5 +924,43 @@ export const adminApi = {
 
     const json = await response.json();
     return json.data;
+  },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Inverse of flashOwnerTakeover. Rolls back a manual takeover if the
+  // subsequent answer submission failed, returning the question to the
+  // rotation pool (status='open'). Called from useOwnerAnswerFlashQuestion()
+  // as a best-effort cleanup after a failed answer step.
+  // ────────────────────────────────────────────────────────────────────────
+  flashOwnerRelease: async (params: { questionId: string; reason?: string }) => {
+    const token = await getAuthToken();
+    const response = await fetch(`${EDGE_FUNCTIONS_URL}/flash-owner-release`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        question_id: params.questionId,
+        reason: params.reason,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      try {
+        const json = JSON.parse(text);
+        throw new Error(json?.error?.message || json?.message || 'Error al liberar la pregunta');
+      } catch {
+        throw new Error(text || 'Error al liberar la pregunta');
+      }
+    }
+
+    const json = await response.json();
+    return json.data as {
+      question_id: string;
+      session_id: string;
+      released_at: string;
+    };
   },
 };

@@ -80,29 +80,66 @@ export function useOwnerAnswerFlashQuestion() {
 
   return useMutation({
     mutationFn: async (input: OwnerAnswerInput) => {
+      // Step 1: takeover. After this, the question is 'claimed' by the owner
+      // and is_manual_override=true; it's invisible to other readers and the
+      // rotation cron skips it. Any failure from here on must be rolled back
+      // via flashOwnerRelease, otherwise the question is stuck.
       const takeover = await adminApi.flashOwnerTakeover({
         questionId: input.questionId,
         reason: input.reason,
       });
 
-      const storagePaths: string[] = [];
-      if (input.imageFile) {
-        const path = await adminApi.flashUploadAnswerMedia({
-          file: input.imageFile,
-          serviceSlug: input.serviceSlug ?? 'flash_1carta',
+      // Generate a stable idempotency key once per submission attempt so a
+      // network retry of the answer step doesn't violate the UNIQUE
+      // constraint on global_answers(question_id).
+      const idempotencyKey = crypto.randomUUID();
+
+      try {
+        const storagePaths: string[] = [];
+        if (input.imageFile) {
+          const path = await adminApi.flashUploadAnswerMedia({
+            file: input.imageFile,
+            serviceSlug: input.serviceSlug ?? 'flash_1carta',
+          });
+          storagePaths.push(path);
+        }
+
+        await adminApi.flashAnswerQuestion({
+          sessionId: takeover.session_id,
+          bodyText: input.bodyText,
+          storagePaths,
+          idempotencyKey,
         });
-        storagePaths.push(path);
+
+        return takeover;
+      } catch (answerError) {
+        // Best-effort rollback so the question goes back into rotation
+        // instead of being stuck in 'claimed' with no answer. We don't
+        // surface release errors — the user already saw the answer error
+        // and adding a second error would be confusing.
+        try {
+          await adminApi.flashOwnerRelease({
+            questionId: input.questionId,
+            reason: 'answer_submission_failed',
+          });
+        } catch (releaseError) {
+          // Log to console so the issue is at least visible in DevTools.
+          // The question may now be stuck and require manual DB intervention.
+          console.error(
+            '[useOwnerAnswerFlashQuestion] Rollback failed after answer error',
+            { answerError, releaseError, questionId: input.questionId },
+          );
+        }
+        throw answerError;
       }
-
-      await adminApi.flashAnswerQuestion({
-        sessionId: takeover.session_id,
-        bodyText: input.bodyText,
-        storagePaths,
-      });
-
-      return takeover;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
+    },
+    onError: () => {
+      // Refresh the list either way — the question may have been released
+      // and is now back to 'open', or it may have been answered between the
+      // takeover and the failure (rare but possible).
       queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
     },
   });
