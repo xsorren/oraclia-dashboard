@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientDetailModal } from '@/components/clients/ClientDetailModal';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
@@ -46,6 +47,11 @@ export function FlashQuestionsTab() {
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [questionToReset, setQuestionToReset] = useState<string | null>(null);
     const [questionToAnswer, setQuestionToAnswer] = useState<FlashQuestion | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+    const handleClientClick = (clientId: string | null | undefined) => {
+        if (clientId) setSelectedClientId(clientId);
+    };
 
     const { toast } = useToast();
     const { data, isLoading } = useFlashQuestions({ page, limit: 15, search, status });
@@ -136,7 +142,13 @@ export function FlashQuestionsTab() {
                                     return (
                                         <MobileCard key={question.id}>
                                             <MobileCardHeader>
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleClientClick(question.user?.id)}
+                                                    disabled={!question.user?.id}
+                                                    className="flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-slate-800 transition disabled:cursor-default"
+                                                    title={question.user?.id ? 'Ver perfil del cliente' : undefined}
+                                                >
                                                     <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                         <SignedAvatar
                                                             src={question.user?.avatar_url}
@@ -146,14 +158,14 @@ export function FlashQuestionsTab() {
                                                         />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="text-sm font-medium text-white truncate">
+                                                        <div className="text-sm font-medium text-white truncate hover:text-purple-300 transition">
                                                             {question.user?.display_name || 'Desconocido'}
                                                         </div>
                                                         <div className="text-xs text-slate-500">
                                                             {formatRelativeTime(question.created_at)}
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </button>
                                                 <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium flex-shrink-0 ${statusInfo.color}`}>
                                                     <StatusIcon className="w-3 h-3" />
                                                     <span className="hidden xs:inline">{statusInfo.label}</span>
@@ -239,7 +251,13 @@ export function FlashQuestionsTab() {
                                     return (
                                         <ResponsiveTableRow key={question.id}>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleClientClick(question.user?.id)}
+                                                    disabled={!question.user?.id}
+                                                    className="flex items-center gap-3 text-left -mx-1 px-1 py-1 rounded-lg hover:bg-slate-800/60 transition disabled:cursor-default"
+                                                    title={question.user?.id ? 'Ver perfil del cliente' : undefined}
+                                                >
                                                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
                                                         <SignedAvatar
                                                             src={question.user?.avatar_url}
@@ -248,10 +266,10 @@ export function FlashQuestionsTab() {
                                                             fallback={<User className="w-4 h-4 text-slate-400" />}
                                                         />
                                                     </div>
-                                                    <div className="text-sm font-medium text-white">
+                                                    <div className="text-sm font-medium text-white hover:text-purple-300 transition">
                                                         {question.user?.display_name || 'Desconocido'}
                                                     </div>
-                                                </div>
+                                                </button>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="max-w-md">
@@ -366,6 +384,13 @@ export function FlashQuestionsTab() {
                 <OwnerAnswerModal
                     question={questionToAnswer}
                     onClose={() => setQuestionToAnswer(null)}
+                />
+            )}
+
+            {selectedClientId && (
+                <ClientDetailModal
+                    clientId={selectedClientId}
+                    onClose={() => setSelectedClientId(null)}
                 />
             )}
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientDetailModal } from '@/components/clients/ClientDetailModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
 import { MobileCard, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
@@ -53,8 +54,16 @@ export function PrivateConsultationsTab() {
     const [status, setStatus] = useState('all');
     const [serviceKind, setServiceKind] = useState('all');
     const [selectedConsultationId, setSelectedConsultationId] = useState<string | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
     const { data, isLoading } = usePrivateConsultations({ page, limit: 15, search: '', status, serviceKind });
+
+    // Click handler that opens the client modal without bubbling to the row,
+    // which would otherwise also open the consultation detail modal.
+    const handleClientClick = (e: React.MouseEvent, clientId: string | null | undefined) => {
+        e.stopPropagation();
+        if (clientId) setSelectedClientId(clientId);
+    };
 
     return (
         <div className="space-y-6 lg:space-y-8">
@@ -110,7 +119,13 @@ export function PrivateConsultationsTab() {
                                             onClick={() => setSelectedConsultationId(consultation.id)}
                                         >
                                             <MobileCardHeader>
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleClientClick(e, consultation.user?.id)}
+                                                    disabled={!consultation.user?.id}
+                                                    className="flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-slate-800 transition disabled:cursor-default"
+                                                    title={consultation.user?.id ? 'Ver perfil del cliente' : undefined}
+                                                >
                                                     <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                         <SignedAvatar
                                                             src={consultation.user?.avatar_url}
@@ -120,7 +135,7 @@ export function PrivateConsultationsTab() {
                                                         />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="text-sm font-medium text-white truncate">
+                                                        <div className="text-sm font-medium text-white truncate hover:text-purple-300 transition">
                                                             {consultation.user?.display_name || 'Sin nombre'}
                                                         </div>
                                                         {consultation.user?.email && (
@@ -132,7 +147,7 @@ export function PrivateConsultationsTab() {
                                                             {serviceKinds[consultation.service_kind] || consultation.service_kind}
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </button>
                                                 <div className="flex flex-col items-end gap-1">
                                                     <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-medium flex-shrink-0 ${statusInfo.color}`}>
                                                         <StatusIcon className="w-3 h-3" />
@@ -179,7 +194,13 @@ export function PrivateConsultationsTab() {
                                             onClick={() => setSelectedConsultationId(consultation.id)}
                                         >
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleClientClick(e, consultation.user?.id)}
+                                                    disabled={!consultation.user?.id}
+                                                    className="flex items-center gap-3 text-left -mx-1 px-1 py-1 rounded-lg hover:bg-slate-800/60 transition disabled:cursor-default"
+                                                    title={consultation.user?.id ? 'Ver perfil del cliente' : undefined}
+                                                >
                                                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
                                                         <SignedAvatar
                                                             src={consultation.user?.avatar_url}
@@ -189,7 +210,7 @@ export function PrivateConsultationsTab() {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-medium text-white">
+                                                        <div className="text-sm font-medium text-white hover:text-purple-300 transition">
                                                             {consultation.user?.display_name || 'Sin nombre'}
                                                         </div>
                                                         {consultation.user?.email && (
@@ -198,7 +219,7 @@ export function PrivateConsultationsTab() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                </div>
+                                                </button>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-purple-400 font-medium">
@@ -259,6 +280,13 @@ export function PrivateConsultationsTab() {
                 <ConsultationDetailModal
                     consultationId={selectedConsultationId}
                     onClose={() => setSelectedConsultationId(null)}
+                />
+            )}
+
+            {selectedClientId && (
+                <ClientDetailModal
+                    clientId={selectedClientId}
+                    onClose={() => setSelectedClientId(null)}
                 />
             )}
         </div>

@@ -291,6 +291,7 @@ export interface FlashQuestion {
   status: string;
   created_at: string;
   user?: {
+    id?: string | null;
     display_name: string;
     avatar_url?: string | null;
   };
@@ -416,6 +417,107 @@ export interface PayoutHistoryData {
 }
 
 export type NotificationsAudience = 'all' | 'users' | 'tarotistas';
+
+export interface ClientProfile {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  email: string | null;
+  role: string;
+  country: string | null;
+  timezone: string | null;
+  zodiac_sign: string | null;
+  moon_sign: string | null;
+  rising_sign: string | null;
+  birthdate: string | null;
+  preferred_currency: 'ARS' | 'USD' | 'EUR';
+  is_active: boolean;
+  onboarding_complete: boolean;
+  created_at: string;
+  last_sign_in_at: string | null;
+  banned_until: string | null;
+}
+
+export interface ClientStats {
+  total_consultations: number;
+  consultations_by_status: Record<string, number>;
+  successful_payments_count: number;
+  total_spent_by_currency: Record<string, number>;
+  total_remaining_units: number;
+  active_entitlements_count: number;
+  last_activity_at: string | null;
+}
+
+export interface ClientPayment {
+  id: string;
+  provider: string;
+  provider_ref: string;
+  status: string;
+  currency: string;
+  amount_money: number;
+  pack_sku: string | null;
+  pack_name: string | null;
+  units_granted: number | null;
+  created_at: string;
+}
+
+export interface ClientLedgerEntry {
+  id: string;
+  entry_type: string;
+  ref_type: string;
+  ref_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ClientEntitlement {
+  id: string;
+  pack_sku: string;
+  pack_name: string | null;
+  service_kind: string | null;
+  remaining_units: number;
+  total_purchased: number;
+  granted_at: string | null;
+  purchased_at: string;
+  expires_at: string | null;
+  is_expired: boolean;
+}
+
+export interface ClientConsultation {
+  id: string;
+  service_kind: string;
+  status: string;
+  thread_id: string | null;
+  question_id: string | null;
+  claimed_at: string | null;
+  answered_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  reader: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+export interface ClientFlashQuestion {
+  id: string;
+  content: string;
+  status: string;
+  claimed_at: string | null;
+  answered_at: string | null;
+  created_at: string;
+}
+
+export interface ClientDetailData {
+  profile: ClientProfile;
+  stats: ClientStats;
+  payments: ClientPayment[];
+  ledger: ClientLedgerEntry[];
+  entitlements: ClientEntitlement[];
+  consultations: ClientConsultation[];
+  flash_questions: ClientFlashQuestion[];
+}
 
 export interface NotificationsBroadcastParams {
   title: string;
@@ -753,6 +855,13 @@ export const adminApi = {
       errorMessage: 'Error al obtener detalle de consulta',
     },
     ),
+
+  // Client detail — full profile, stats, purchases, credits and consultations
+  getClientDetail: (clientId: string) =>
+    adminFetch<{ data: ClientDetailData }>(
+      'GET', `admin-dashboard/client/${clientId}/details`, {
+      errorMessage: 'Error al obtener detalle del cliente',
+    }),
 
   // Flash reports (reports linked to Flash questions)
   getFlashReports: (params: { status?: string; page?: number; limit?: number }) =>
