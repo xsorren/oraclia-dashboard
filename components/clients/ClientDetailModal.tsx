@@ -665,6 +665,10 @@ function Empty({
 
 function paymentStatusColor(status: string): string {
     switch (status) {
+        // 'approved' es el status final exitoso de MercadoPago / PayPal / AstroPay.
+        // Los otros nombres ('paid', 'succeeded', 'completed') quedan por
+        // compatibilidad con un futuro Stripe u otro provider.
+        case 'approved':
         case 'paid':
         case 'succeeded':
         case 'completed':
@@ -675,6 +679,7 @@ function paymentStatusColor(status: string): string {
             return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
         case 'failed':
         case 'cancelled':
+        case 'rejected':
         case 'refunded':
             return 'bg-red-500/15 text-red-400 border-red-500/20';
         default:
