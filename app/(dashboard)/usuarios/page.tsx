@@ -1,5 +1,6 @@
 'use client';
 
+import { ClientDetailModal } from '@/components/clients/ClientDetailModal';
 import { ConfirmModal } from '@/components/common/ConfirmModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
@@ -51,6 +52,7 @@ export default function UsersPage() {
   const [limit] = useState(10);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; email: string | null } | null>(null);
   const [userToGrantCredits, setUserToGrantCredits] = useState<{ id: string; name: string } | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: response, isLoading } = useUsers({
@@ -162,18 +164,23 @@ export default function UsersPage() {
                             {data.map((user) => (
                                 <MobileCard key={user.id}>
                                     <MobileCardHeader>
-                                        <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedClientId(user.id)}
+                                            className="flex items-center gap-3 w-full text-left rounded-lg -mx-1 px-1 py-1 hover:bg-slate-800 transition"
+                                            title="Ver perfil del cliente"
+                                        >
                                             <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-white font-bold shrink-0">
                                                 {user.display_name?.charAt(0).toUpperCase() || '?'}
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <h3 className="font-medium text-white">{user.display_name || 'Sin nombre'}</h3>
+                                                    <h3 className="font-medium text-white hover:text-purple-300 transition">{user.display_name || 'Sin nombre'}</h3>
                                                     <StatusBadge isActive={user.is_active} isBanned={user.is_banned} />
                                                 </div>
                                                 <p className="text-sm text-slate-400 truncate">{user.email}</p>
                                             </div>
-                                        </div>
+                                        </button>
                                     </MobileCardHeader>
                                     
                                     <div className="grid grid-cols-2 gap-4 mt-4">
@@ -220,12 +227,17 @@ export default function UsersPage() {
                             {data.map((user) => (
                                 <ResponsiveTableRow key={user.id}>
                                     <td className="p-4">
-                                        <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedClientId(user.id)}
+                                            className="flex items-center gap-3 text-left -mx-1 px-1 py-1 rounded-lg hover:bg-slate-800/60 transition"
+                                            title="Ver perfil del cliente"
+                                        >
                                             <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
                                                 {user.display_name?.charAt(0).toUpperCase() || '?'}
                                             </div>
-                                            <span className="font-medium text-white">{user.display_name || 'Sin nombre'}</span>
-                                        </div>
+                                            <span className="font-medium text-white hover:text-purple-300 transition">{user.display_name || 'Sin nombre'}</span>
+                                        </button>
                                     </td>
                                     <td className="p-4 text-slate-400 text-sm">{user.email || '-'}</td>
                                     <td className="p-4">
@@ -292,11 +304,18 @@ export default function UsersPage() {
         isLoading={isDeleting}
       />
 
-      <GrantCreditsModal 
+      <GrantCreditsModal
         isOpen={!!userToGrantCredits}
         onClose={() => setUserToGrantCredits(null)}
         user={userToGrantCredits}
       />
+
+      {selectedClientId && (
+        <ClientDetailModal
+          clientId={selectedClientId}
+          onClose={() => setSelectedClientId(null)}
+        />
+      )}
     </>
   );
 }
