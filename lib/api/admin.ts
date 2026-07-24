@@ -12,6 +12,38 @@ async function getAuthToken(): Promise<string> {
   return session.access_token;
 }
 
+// ─── Errors ──────────────────────────────────────────────────────────────────
+
+/**
+ * Error enriquecido con el `code` del sobre de error de las Edge Functions
+ * (`{ error: { code, message, details } }`). Lo usa la UI para distinguir casos
+ * accionables (p. ej. ALREADY_ANSWERED → ofrecer cancelación forzada) de un
+ * error genérico.
+ */
+export class AdminApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'AdminApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Extrae `{ error: { code, message } }`; si el body no es JSON usa el texto crudo. */
+function parseErrorEnvelope(text: string, status: number, fallback: string): AdminApiError {
+  try {
+    const json = JSON.parse(text);
+    const message = json?.error?.message || json?.message || fallback;
+    const code = json?.error?.code;
+    return new AdminApiError(message, status, code);
+  } catch {
+    return new AdminApiError(text || fallback, status);
+  }
+}
+
 // ─── Internal fetch helper ───────────────────────────────────────────────────
 
 /**
@@ -304,9 +336,11 @@ export interface FlashQuestion {
 
 export interface PrivateConsultation {
   id: string;
+  thread_id?: string | null;
   service_kind: string;
   status: string;
   created_at: string;
+  answered_at?: string | null;
   message_count: number;
   user?: {
     id?: string;
@@ -315,12 +349,39 @@ export interface PrivateConsultation {
     email?: string | null;
   };
   reader?: {
+    id?: string;
     display_name: string;
     avatar_url?: string | null;
   };
   last_message?: {
     sender_type: 'reader' | 'user';
     body_text: string;
+  };
+}
+
+/**
+ * Cómo se devolvió el crédito al cancelar una consulta privada:
+ *  - restored → se sumó 1 unidad a un pack existente del cliente
+ *  - granted  → no había pack con espacio, se le otorgó 1 crédito nuevo
+ *  - failed   → se intentó devolver y no se pudo (hay que otorgarlo a mano)
+ *  - none     → se canceló sin devolución (el admin destildó la opción)
+ */
+export type RefundMode = 'restored' | 'granted' | 'failed' | 'none';
+
+export interface CancelPrivateConsultationResult {
+  success: boolean;
+  message: string;
+  data: {
+    session_id: string;
+    status: string;
+    previous_status: string;
+    refunded: boolean;
+    refund_mode: RefundMode;
+    entitlement_id: string | null;
+    pack_sku: string | null;
+    forced: boolean;
+    ledger_id: string | null;
+    refund_error: string | null;
   };
 }
 
@@ -847,6 +908,42 @@ export const adminApi = {
       },
       errorMessage: 'Error al obtener consultas privadas',
     }),
+
+  /**
+   * Cancela una consulta privada y (por defecto) le devuelve el crédito al
+   * cliente, que queda libre para volver a consultar con otra tarotista.
+   *
+   * Lanza `AdminApiError` con `code === 'ALREADY_ANSWERED'` cuando la tarotista
+   * ya respondió: la UI ofrece entonces reintentar con `force: true`.
+   */
+  async cancelPrivateConsultation(params: {
+    sessionId: string;
+    refund?: boolean;
+    force?: boolean;
+    reason?: string;
+    notes?: string;
+  }): Promise<CancelPrivateConsultationResult> {
+    const token = await getAuthToken();
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/private-consultations/${params.sessionId}/cancel`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refund: params.refund ?? true,
+          force: params.force ?? false,
+          reason: params.reason,
+          notes: params.notes,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw parseErrorEnvelope(await response.text(), response.status, 'Error al cancelar la consulta');
+    }
+
+    return response.json();
+  },
 
   // Consultation detail (returns full { data: { session, messages } } envelope)
   getConsultationDetail: (consultationId: string) =>
