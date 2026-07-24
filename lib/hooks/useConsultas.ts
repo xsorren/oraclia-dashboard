@@ -172,6 +172,35 @@ export function usePrivateConsultations(params: {
   });
 }
 
+/**
+ * Cancela una consulta privada y devuelve el crédito al cliente.
+ *
+ * Invalida además las vistas que muestran saldo/créditos (usuarios, ficha de
+ * cliente y overview), porque el reembolso cambia `user_entitlements`.
+ */
+export function useCancelPrivateConsultation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      sessionId: string;
+      refund?: boolean;
+      force?: boolean;
+      reason?: string;
+      notes?: string;
+    }) => adminApi.cancelPrivateConsultation(params),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'private-consultations'] });
+      queryClient.invalidateQueries({
+        queryKey: consultaKeys.consultationDetail(variables.sessionId),
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'client-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] });
+    },
+  });
+}
+
 export function useConsultationDetail(id: string | null) {
   return useQuery({
     queryKey: consultaKeys.consultationDetail(id),

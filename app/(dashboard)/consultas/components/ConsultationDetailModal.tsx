@@ -3,14 +3,21 @@
 import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { useConsultationDetail } from '@/lib/hooks/useConsultas';
 import { formatDateTime } from '@/lib/utils/dates';
-import { CheckCircle2, User, X } from 'lucide-react';
+import { SERVICE_KIND_NAMES } from '@/lib/utils/services';
+import { CheckCircle2, RotateCcw, User, X } from 'lucide-react';
+import type { CancelPrivateConsultationTarget } from './CancelPrivateConsultationModal';
 
 interface Props {
     consultationId: string;
     onClose: () => void;
+    /**
+     * Abre el modal de cancelación (vive en el tab padre para que la lista se
+     * refresque aunque este modal se cierre).
+     */
+    onRequestCancel?: (target: CancelPrivateConsultationTarget) => void;
 }
 
-export function ConsultationDetailModal({ consultationId, onClose }: Props) {
+export function ConsultationDetailModal({ consultationId, onClose, onRequestCancel }: Props) {
     const { data: detailData, isLoading } = useConsultationDetail(consultationId);
 
     return (
@@ -126,9 +133,25 @@ export function ConsultationDetailModal({ consultationId, onClose }: Props) {
                                     )}
                                 </div>
 
-                                <div className="p-4 border-t border-slate-800 bg-slate-800/20 flex items-center justify-between shrink-0">
+                                <div className="p-4 border-t border-slate-800 bg-slate-800/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
                                     <div className="text-sm text-slate-400">Servicio: <span className="text-white ml-1">{session.service_kind}</span></div>
                                     <div className="text-sm text-slate-400">Estado: <span className="text-white ml-1 uppercase text-xs">{session.status}</span></div>
+                                    {onRequestCancel && session.status !== 'cancelled' && (
+                                        <button
+                                            onClick={() => onRequestCancel({
+                                                id: session.id,
+                                                status: session.status,
+                                                serviceLabel: SERVICE_KIND_NAMES[session.service_kind] || session.service_kind,
+                                                clientName: session.user?.display_name || 'el cliente',
+                                                readerName: session.reader?.display_name ?? null,
+                                            })}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition text-xs font-medium"
+                                            title="Cancelar la consulta y devolver el crédito al cliente"
+                                        >
+                                            <RotateCcw className="w-3.5 h-3.5" />
+                                            Cancelar y devolver crédito
+                                        </button>
+                                    )}
                                 </div>
                             </>
                         );
