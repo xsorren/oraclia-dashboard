@@ -307,7 +307,7 @@ export default function ConsultasPrivadasPage() {
                         </MobileCardList>
 
                         {/* Desktop Table */}
-                        <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha', 'Acciones']}>
+                        <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha', 'Acciones']} stickyLastColumn>
                         {data.data.map((consultation) => {
                             const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
                             const StatusIcon = statusInfo.icon;
@@ -339,7 +339,7 @@ export default function ConsultasPrivadasPage() {
                                                     {consultation.user?.display_name || 'Sin nombre'}
                                                 </div>
                                                 {consultation.user?.email && (
-                                                    <div className="text-xs text-slate-400 truncate max-w-[200px]">
+                                                    <div className="text-xs text-slate-400 truncate max-w-[170px]">
                                                         {consultation.user.email}
                                                     </div>
                                                 )}
@@ -369,7 +369,7 @@ export default function ConsultasPrivadasPage() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2" title={getServiceName(consultation.service_kind)}>
                                             <span className="text-lg">{getServiceEmoji(consultation.service_kind)}</span>
-                                            <span className="text-sm text-slate-300 truncate max-w-[150px]">
+                                            <span className="text-sm text-slate-300 truncate max-w-[120px]">
                                                 {getServiceName(consultation.service_kind)}
                                             </span>
                                         </div>
@@ -382,7 +382,7 @@ export default function ConsultasPrivadasPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         {consultation.last_message ? (
-                                            <div className="max-w-xs">
+                                            <div className="max-w-[165px]">
                                                 <div className="text-xs text-slate-500 mb-0.5">
                                                     {consultation.last_message.sender_type === 'reader' ? 'Tarotista' : 'Usuario'}:
                                                 </div>
@@ -399,26 +399,30 @@ export default function ConsultasPrivadasPage() {
                                             {formatDate(consultation.created_at)}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    {/* Esta tabla tiene una columna más que la del tab (Tarotista), así
+                                        que los botones van como iconos: con texto se iba de ancho y
+                                        las acciones quedaban fuera de pantalla. El detalle (SlideOver)
+                                        sí los muestra con etiqueta. */}
+                                    <td className="px-3 py-4 sticky right-0 z-10 bg-slate-900">
                                         <div className="flex items-center gap-1">
                                             {isResettable(consultation) && (
                                                 <button
                                                     onClick={(e) => handleResetClick(e, consultation)}
-                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition text-xs font-medium whitespace-nowrap"
-                                                    title="Borrar la respuesta y dejar la consulta pendiente otra vez"
+                                                    className="p-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition"
+                                                    title="Reabrir: borrar la respuesta y dejar la consulta pendiente otra vez"
+                                                    aria-label="Reabrir consulta"
                                                 >
-                                                    <RefreshCw className="w-3.5 h-3.5" />
-                                                    Reabrir
+                                                    <RefreshCw className="w-4 h-4" />
                                                 </button>
                                             )}
                                             {isCancellable(consultation.status) && (
                                                 <button
                                                     onClick={(e) => handleCancelClick(e, consultation)}
-                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition text-xs font-medium whitespace-nowrap"
+                                                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
                                                     title="Cancelar la consulta y devolver el crédito al cliente"
+                                                    aria-label="Cancelar consulta y devolver crédito"
                                                 >
-                                                    <RotateCcw className="w-3.5 h-3.5" />
-                                                    Cancelar
+                                                    <RotateCcw className="w-4 h-4" />
                                                 </button>
                                             )}
                                         </div>

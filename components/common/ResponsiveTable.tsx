@@ -4,9 +4,16 @@ interface ResponsiveTableProps {
   headers: string[];
   children: ReactNode;
   minWidth?: string;
+  /**
+   * Fija la última columna a la derecha. Para tablas anchas cuya última columna
+   * son acciones: sin esto quedan fuera de pantalla y hay que scrollear en
+   * horizontal para encontrarlas. La celda `<td>` correspondiente tiene que
+   * llevar las mismas clases sticky (ver /consultas/privadas).
+   */
+  stickyLastColumn?: boolean;
 }
 
-export function ResponsiveTable({ headers, children, minWidth = '800px' }: ResponsiveTableProps) {
+export function ResponsiveTable({ headers, children, minWidth = '800px', stickyLastColumn = false }: ResponsiveTableProps) {
   return (
     <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800/50">
       <table className="w-full hidden md:table" style={{ minWidth }}>
@@ -15,7 +22,7 @@ export function ResponsiveTable({ headers, children, minWidth = '800px' }: Respo
             {headers.map((header, index) => (
               <th
                 key={index}
-                className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
+                className={`py-3 sm:py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider ${stickyLastColumn && index === headers.length - 1 ? 'px-3 sticky right-0 z-10 bg-slate-800' : 'px-4 sm:px-6'}`}
               >
                 {header}
               </th>
