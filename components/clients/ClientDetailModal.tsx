@@ -29,6 +29,7 @@ import {
     MessageSquare,
     Package,
     Receipt,
+    RefreshCw,
     ShieldOff,
     ShoppingCart,
     Sparkles,
@@ -892,6 +893,12 @@ function describeLedgerEntry(entry: ClientLedgerEntry): {
             return { label: 'Respuesta enviada', badge: 'Respondió', tone: 'success', icon: CheckCircle2 };
         case 'dm_message':
             return { label: 'Mensaje en consulta privada', badge: 'Mensaje', tone: 'neutral', icon: MessageSquare };
+
+        // ── Ajustes de soporte (no mueven créditos)
+        case 'adjustment':
+            return (entry.metadata as { admin_reset?: boolean } | null)?.admin_reset
+                ? { label: 'Consulta reabierta por soporte', badge: 'Ajuste', tone: 'warn', icon: RefreshCw }
+                : { label: 'Ajuste administrativo', badge: 'Ajuste', tone: 'neutral', icon: RefreshCw };
 
         // ── Fallback para ref_types nuevos
         default:

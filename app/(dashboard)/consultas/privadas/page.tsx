@@ -4,12 +4,13 @@ import { ChatViewer } from '@/components/chat/ChatViewer';
 import { ClientDetailModal } from '@/components/clients/ClientDetailModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Pagination } from '@/components/common/Pagination';
-import { MobileCard, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
+import { MobileCard, MobileCardActions, MobileCardField, MobileCardHeader, MobileCardList, ResponsiveTable, ResponsiveTableRow } from '@/components/common/ResponsiveTable';
 import { SectionCard } from '@/components/common/SectionCard';
 import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { SlideOver } from '@/components/common/SlideOver';
 import { TableSkeleton } from '@/components/common/TableSkeleton';
 import { Header } from '@/components/layout/Header';
+import type { PrivateConsultation } from '@/lib/api/admin';
 import { useConsultationDetail, usePrivateConsultations } from '@/lib/hooks/useConsultas';
 import { formatDate, formatRelativeTime } from '@/lib/utils/dates';
 import { getServiceEmoji, getServiceName } from '@/lib/utils/services';
@@ -21,11 +22,15 @@ import {
     Clock,
     Eye,
     MessageCircle,
+    RefreshCw,
+    RotateCcw,
     Search,
     User,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
+import { CancelPrivateConsultationModal, type CancelPrivateConsultationTarget } from '../components/CancelPrivateConsultationModal';
+import { ResetPrivateConsultationModal, type ResetPrivateConsultationTarget } from '../components/ResetPrivateConsultationModal';
 
 const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   open: { label: 'Pendiente', icon: Clock, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
@@ -52,6 +57,33 @@ const serviceOptions = [
     { value: 'analisis_suenos', label: 'Sueños' },
 ];
 
+/** Una consulta ya cancelada no se puede volver a cancelar. */
+function isCancellable(status: string): boolean {
+  return status !== 'cancelled';
+}
+
+/**
+ * Reabrir solo tiene sentido si hay algo que resetear: una respuesta de la
+ * tarotista o una consulta terminada/expirada. Espeja `PrivateConsultationsTab`.
+ */
+function isResettable(consultation: { status: string; last_message?: { sender_type?: string } | null }): boolean {
+  if (consultation.status === 'cancelled') return false;
+  if (['answered', 'closed', 'expired'].includes(consultation.status)) return true;
+  return consultation.last_message?.sender_type === 'reader';
+}
+
+type ConsultationActionTarget = CancelPrivateConsultationTarget & ResetPrivateConsultationTarget;
+
+function toActionTarget(consultation: Pick<PrivateConsultation, 'id' | 'status' | 'service_kind' | 'user' | 'reader'>): ConsultationActionTarget {
+  return {
+    id: consultation.id,
+    status: consultation.status,
+    serviceLabel: getServiceName(consultation.service_kind),
+    clientName: consultation.user?.display_name || 'el cliente',
+    readerName: consultation.reader?.display_name ?? null,
+  };
+}
+
 export default function ConsultasPrivadasPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -61,6 +93,8 @@ export default function ConsultasPrivadasPage() {
   // Selection State
   const [selectedConsultation, setSelectedConsultation] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [consultationToCancel, setConsultationToCancel] = useState<ConsultationActionTarget | null>(null);
+  const [consultationToReset, setConsultationToReset] = useState<ConsultationActionTarget | null>(null);
 
   // const { toast } = useToast();
 
@@ -72,6 +106,18 @@ export default function ConsultasPrivadasPage() {
   const handleClientClick = (e: React.MouseEvent, clientId: string | null | undefined) => {
     e.stopPropagation();
     if (clientId) setSelectedClientId(clientId);
+  };
+
+  // Los botones viven dentro de una fila/tarjeta clickeable: sin stopPropagation
+  // se abriría además el detalle de la consulta.
+  const handleCancelClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
+    e.stopPropagation();
+    setConsultationToCancel(toActionTarget(consultation));
+  };
+
+  const handleResetClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
+    e.stopPropagation();
+    setConsultationToReset(toActionTarget(consultation));
   };
 
   // Query for details when selected
@@ -232,13 +278,36 @@ export default function ConsultasPrivadasPage() {
                                             label="Mensajes" 
                                             value={`${consultation.message_count} msgs`} 
                                         />
+
+                                        {(isResettable(consultation) || isCancellable(consultation.status)) && (
+                                            <MobileCardActions>
+                                                {isResettable(consultation) && (
+                                                    <button
+                                                        onClick={(e) => handleResetClick(e, consultation)}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition text-sm font-medium"
+                                                    >
+                                                        <RefreshCw className="w-4 h-4" />
+                                                        Reabrir
+                                                    </button>
+                                                )}
+                                                {isCancellable(consultation.status) && (
+                                                    <button
+                                                        onClick={(e) => handleCancelClick(e, consultation)}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition text-sm font-medium"
+                                                    >
+                                                        <RotateCcw className="w-4 h-4" />
+                                                        Cancelar
+                                                    </button>
+                                                )}
+                                            </MobileCardActions>
+                                        )}
                                     </MobileCard>
                                 );
                             })}
                         </MobileCardList>
 
                         {/* Desktop Table */}
-                        <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha']}>
+                        <ResponsiveTable headers={['Cliente', 'Tarotista', 'Servicio', 'Estado', 'Último Mensaje', 'Fecha', 'Acciones']}>
                         {data.data.map((consultation) => {
                             const statusInfo = statusConfig[consultation.status] || statusConfig.unknown;
                             const StatusIcon = statusInfo.icon;
@@ -330,6 +399,30 @@ export default function ConsultasPrivadasPage() {
                                             {formatDate(consultation.created_at)}
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-1">
+                                            {isResettable(consultation) && (
+                                                <button
+                                                    onClick={(e) => handleResetClick(e, consultation)}
+                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition text-xs font-medium whitespace-nowrap"
+                                                    title="Borrar la respuesta y dejar la consulta pendiente otra vez"
+                                                >
+                                                    <RefreshCw className="w-3.5 h-3.5" />
+                                                    Reabrir
+                                                </button>
+                                            )}
+                                            {isCancellable(consultation.status) && (
+                                                <button
+                                                    onClick={(e) => handleCancelClick(e, consultation)}
+                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition text-xs font-medium whitespace-nowrap"
+                                                    title="Cancelar la consulta y devolver el crédito al cliente"
+                                                >
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                    Cancelar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
                                 </ResponsiveTableRow>
                             );
                         })}
@@ -415,11 +508,62 @@ export default function ConsultasPrivadasPage() {
                     session={detailData.data.session}
                     messages={detailData.data.messages}
                 />
+
+                {/* Acciones de soporte sobre la consulta */}
+                {(() => {
+                    const session = detailData.data.session;
+                    const canReset = session.status !== 'cancelled' && (
+                        detailData.data.messages.some((m) => m.is_reader)
+                        || ['answered', 'closed', 'expired'].includes(session.status)
+                    );
+                    if (!canReset && !isCancellable(session.status)) return null;
+
+                    return (
+                        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
+                            {canReset && (
+                                <button
+                                    onClick={() => setConsultationToReset(toActionTarget(session))}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20 rounded-xl transition text-sm font-medium"
+                                    title="Borrar la respuesta y dejar la consulta pendiente otra vez"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Reabrir consulta
+                                </button>
+                            )}
+                            {isCancellable(session.status) && (
+                                <button
+                                    onClick={() => setConsultationToCancel(toActionTarget(session))}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-xl transition text-sm font-medium"
+                                    title="Cancelar la consulta y devolver el crédito al cliente"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    Cancelar y devolver crédito
+                                </button>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
         ) : (
             <EmptyState title="Error" description="No se pudo cargar el detalle" icon={AlertCircle} />
         )}
       </SlideOver>
+
+      {consultationToCancel && (
+        <CancelPrivateConsultationModal
+          consultation={consultationToCancel}
+          onClose={() => setConsultationToCancel(null)}
+          onCancelled={() => setSelectedConsultation(null)}
+        />
+      )}
+
+      {consultationToReset && (
+        <ResetPrivateConsultationModal
+          consultation={consultationToReset}
+          onClose={() => setConsultationToReset(null)}
+          onReset={() => setSelectedConsultation(null)}
+        />
+      )}
 
       {selectedClientId && (
         <ClientDetailModal

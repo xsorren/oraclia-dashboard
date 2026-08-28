@@ -31,7 +31,6 @@ export default function ThumbnailsPage() {
   };
 
   const fetchVideos = async () => {
-    setLoading(true);
     const { data, error } = await supabase
       .from('reader_intro_video')
       .select('*, reader_profiles(profiles(display_name, avatar_url))') as { data: any[] | null; error: any };
@@ -58,7 +57,9 @@ export default function ThumbnailsPage() {
   };
 
   useEffect(() => {
-    fetchVideos();
+    const timeout = window.setTimeout(() => { void fetchVideos(); }, 0);
+    return () => window.clearTimeout(timeout);
+    // This page intentionally loads once; `supabase` is a per-render client.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,7 +88,8 @@ export default function ThumbnailsPage() {
       }
 
       alert('Miniatura cargada con éxito');
-      fetchVideos();
+      setLoading(true);
+      void fetchVideos();
     } catch (error: any) {
       console.error(error);
       alert('Error: ' + error.message);
