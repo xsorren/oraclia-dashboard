@@ -4,8 +4,9 @@ import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { useConsultationDetail } from '@/lib/hooks/useConsultas';
 import { formatDateTime } from '@/lib/utils/dates';
 import { SERVICE_KIND_NAMES } from '@/lib/utils/services';
-import { CheckCircle2, RotateCcw, User, X } from 'lucide-react';
+import { CheckCircle2, RefreshCw, RotateCcw, User, X } from 'lucide-react';
 import type { CancelPrivateConsultationTarget } from './CancelPrivateConsultationModal';
+import type { ResetPrivateConsultationTarget } from './ResetPrivateConsultationModal';
 
 interface Props {
     consultationId: string;
@@ -15,9 +16,11 @@ interface Props {
      * refresque aunque este modal se cierre).
      */
     onRequestCancel?: (target: CancelPrivateConsultationTarget) => void;
+    /** Abre el modal de reapertura (mismo motivo que onRequestCancel). */
+    onRequestReset?: (target: ResetPrivateConsultationTarget) => void;
 }
 
-export function ConsultationDetailModal({ consultationId, onClose, onRequestCancel }: Props) {
+export function ConsultationDetailModal({ consultationId, onClose, onRequestCancel, onRequestReset }: Props) {
     const { data: detailData, isLoading } = useConsultationDetail(consultationId);
 
     return (
@@ -36,6 +39,20 @@ export function ConsultationDetailModal({ consultationId, onClose, onRequestCanc
                 ) : (
                     (() => {
                         const { session, messages } = detailData.data;
+                        // El target es el mismo para cancelar y para reabrir.
+                        const actionTarget = {
+                            id: session.id,
+                            status: session.status,
+                            serviceLabel: SERVICE_KIND_NAMES[session.service_kind] || session.service_kind,
+                            clientName: session.user?.display_name || 'el cliente',
+                            readerName: session.reader?.display_name ?? null,
+                        };
+                        // Reabrir solo si hay algo que resetear (respuesta de la
+                        // tarotista o consulta terminada/expirada) y no está cancelada.
+                        const canReset = session.status !== 'cancelled' && (
+                            messages.some((m) => m.is_reader)
+                            || ['answered', 'closed', 'expired'].includes(session.status)
+                        );
                         return (
                             <>
                                 <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
@@ -136,22 +153,28 @@ export function ConsultationDetailModal({ consultationId, onClose, onRequestCanc
                                 <div className="p-4 border-t border-slate-800 bg-slate-800/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
                                     <div className="text-sm text-slate-400">Servicio: <span className="text-white ml-1">{session.service_kind}</span></div>
                                     <div className="text-sm text-slate-400">Estado: <span className="text-white ml-1 uppercase text-xs">{session.status}</span></div>
-                                    {onRequestCancel && session.status !== 'cancelled' && (
-                                        <button
-                                            onClick={() => onRequestCancel({
-                                                id: session.id,
-                                                status: session.status,
-                                                serviceLabel: SERVICE_KIND_NAMES[session.service_kind] || session.service_kind,
-                                                clientName: session.user?.display_name || 'el cliente',
-                                                readerName: session.reader?.display_name ?? null,
-                                            })}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition text-xs font-medium"
-                                            title="Cancelar la consulta y devolver el crédito al cliente"
-                                        >
-                                            <RotateCcw className="w-3.5 h-3.5" />
-                                            Cancelar y devolver crédito
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {onRequestReset && canReset && (
+                                            <button
+                                                onClick={() => onRequestReset(actionTarget)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20 rounded-lg transition text-xs font-medium"
+                                                title="Borrar la respuesta y dejar la consulta pendiente otra vez"
+                                            >
+                                                <RefreshCw className="w-3.5 h-3.5" />
+                                                Reabrir consulta
+                                            </button>
+                                        )}
+                                        {onRequestCancel && session.status !== 'cancelled' && (
+                                            <button
+                                                onClick={() => onRequestCancel(actionTarget)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded-lg transition text-xs font-medium"
+                                                title="Cancelar la consulta y devolver el crédito al cliente"
+                                            >
+                                                <RotateCcw className="w-3.5 h-3.5" />
+                                                Cancelar y devolver crédito
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         );

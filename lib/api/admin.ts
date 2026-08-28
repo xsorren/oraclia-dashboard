@@ -385,6 +385,28 @@ export interface CancelPrivateConsultationResult {
   };
 }
 
+/**
+ * Resultado de reabrir (resetear) una consulta privada: la consulta vuelve a
+ * quedar pendiente para la MISMA tarotista y no se toca ningún crédito.
+ * `status` queda en 'claimed' (pendiente con tarotista asignada) — ver el
+ * comentario de `handleResetPrivateConsultation` en la EF admin-dashboard.
+ */
+export interface ResetPrivateConsultationResult {
+  success: boolean;
+  message: string;
+  data: {
+    session_id: string;
+    status: string;
+    previous_status: string;
+    had_reader_answer: boolean;
+    deleted_messages: number;
+    deleted_attachments: number;
+    reader_notified: boolean;
+    client_notified: boolean;
+    ledger_id: string | null;
+  };
+}
+
 
 
 export interface TarotistaDetailData {
@@ -940,6 +962,42 @@ export const adminApi = {
 
     if (!response.ok) {
       throw parseErrorEnvelope(await response.text(), response.status, 'Error al cancelar la consulta');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Reabre una consulta privada: borra la respuesta de la tarotista (salvo que
+   * se pase `deleteAnswer: false`) y deja la consulta pendiente otra vez.
+   * No mueve créditos — para eso está `cancelPrivateConsultation`.
+   */
+  async resetPrivateConsultation(params: {
+    sessionId: string;
+    deleteAnswer?: boolean;
+    notifyReader?: boolean;
+    notifyClient?: boolean;
+    reason?: string;
+    notes?: string;
+  }): Promise<ResetPrivateConsultationResult> {
+    const token = await getAuthToken();
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/private-consultations/${params.sessionId}/reset`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deleteAnswer: params.deleteAnswer ?? true,
+          notifyReader: params.notifyReader ?? true,
+          notifyClient: params.notifyClient ?? true,
+          reason: params.reason,
+          notes: params.notes,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw parseErrorEnvelope(await response.text(), response.status, 'Error al reabrir la consulta');
     }
 
     return response.json();

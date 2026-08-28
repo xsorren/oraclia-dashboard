@@ -201,6 +201,35 @@ export function useCancelPrivateConsultation() {
   });
 }
 
+/**
+ * Reabre una consulta privada para que la tarotista la vuelva a responder.
+ *
+ * A diferencia de la cancelación NO mueve créditos, así que no hace falta
+ * invalidar usuarios/overview: alcanza con la lista de consultas y el detalle
+ * (que ya no debería traer la respuesta borrada).
+ */
+export function useResetPrivateConsultation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      sessionId: string;
+      deleteAnswer?: boolean;
+      notifyReader?: boolean;
+      notifyClient?: boolean;
+      reason?: string;
+      notes?: string;
+    }) => adminApi.resetPrivateConsultation(params),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'private-consultations'] });
+      queryClient.invalidateQueries({
+        queryKey: consultaKeys.consultationDetail(variables.sessionId),
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'client-detail'] });
+    },
+  });
+}
+
 export function useConsultationDetail(id: string | null) {
   return useQuery({
     queryKey: consultaKeys.consultationDetail(id),
