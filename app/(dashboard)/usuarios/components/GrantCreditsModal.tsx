@@ -106,7 +106,7 @@ export function GrantCreditsModal({ isOpen, onClose, user }: GrantCreditsModalPr
             Gestionar accesos y créditos
           </h2>
           <p id="grant-entitlement-description" className="text-sm text-slate-400 mb-6">
-            Otorga un pack, servicio o acceso de por vida a <span className="font-medium text-white">{user.name}</span>.
+            Otorga un pack, un servicio o el acceso al curso a <span className="font-medium text-white">{user.name}</span>.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -142,7 +142,7 @@ export function GrantCreditsModal({ isOpen, onClose, user }: GrantCreditsModalPr
                 <option value="" disabled>Seleccionar...</option>
                 {packs.map((pack) => (
                   <option key={pack.id} value={pack.sku}>
-                    {pack.name} {pack.sku === 'curso_tarot_lifetime' ? '(acceso de por vida)' : `(${pack.quantity_units} unid.)`}
+                    {pack.name} {pack.sku === 'curso_tarot_lifetime' ? '(1 año de acceso)' : `(${pack.quantity_units} unid.)`}
                   </option>
                 ))}
               </select>

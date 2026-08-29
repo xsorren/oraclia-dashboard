@@ -90,6 +90,8 @@ export interface Database {
           description: string | null;
           service_kind: string;
           quantity_units: number;
+          /** Días que dura el acceso otorgado; NULL = sin vencimiento (el curso: 365). */
+          validity_days: number | null;
           price_ars: number | null;
           price_usd: number | null;
           price_eur: number | null;
