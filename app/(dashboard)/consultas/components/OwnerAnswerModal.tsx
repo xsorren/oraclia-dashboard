@@ -41,7 +41,6 @@ export function OwnerAnswerModal({ question, onClose }: Props) {
       return;
     }
     const url = URL.createObjectURL(imageFile);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
@@ -214,7 +213,6 @@ export function OwnerAnswerModal({ question, onClose }: Props) {
 
             {imagePreview ? (
               <div className="relative rounded-lg overflow-hidden border border-slate-700">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreview}
                   alt="Vista previa"

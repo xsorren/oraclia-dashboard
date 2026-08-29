@@ -34,9 +34,7 @@ export function EditNetPriceModal({ netPrice, packs, onClose, onToast }: EditNet
     if (netPrice) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setArs(String(netPrice.price_ars));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsd(String(netPrice.price_usd));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEur(String(netPrice.price_eur));
     }
   }, [netPrice]);

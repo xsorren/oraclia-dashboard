@@ -166,6 +166,33 @@ export interface PlatformSummary {
   };
 }
 
+export interface CourseAdminLesson {
+  id: string;
+  module_id: string;
+  slug: string;
+  title: string;
+  lesson_kind: 'video' | 'document';
+  course_sort_order: number;
+  duration_seconds: number | null;
+  course_lesson_media:
+    | { storage_path: string | null; poster_path: string | null; mime: string | null; size_bytes: number | null; duration_seconds: number | null }
+    | { storage_path: string | null; poster_path: string | null; mime: string | null; size_bytes: number | null; duration_seconds: number | null }[]
+    | null;
+}
+
+export interface CourseAdminData {
+  course: { id: string; slug: string; title: string; is_published: boolean };
+  modules: { id: string; slug: string; title: string; sort_order: number }[];
+  lessons: CourseAdminLesson[];
+}
+
+export interface SignedCourseVideoUpload {
+  bucket: 'course-videos';
+  storage_path: string;
+  upload_url: string;
+  token: string;
+}
+
 export interface FinancesData {
   month: number;
   year: number;
@@ -628,6 +655,41 @@ export interface NotificationsBroadcastResult {
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
+  getCourse: () =>
+    adminFetch<CourseAdminData>('GET', 'admin-dashboard/course', { unwrapData: true }),
+
+  signCourseVideo: (params: { lessonId: string; file: File }) =>
+    adminFetch<SignedCourseVideoUpload>('POST', 'admin-dashboard/sign-course-video', {
+      body: {
+        lesson_id: params.lessonId,
+        file_name: params.file.name,
+        mime: params.file.type || 'video/mp4',
+        size_bytes: params.file.size,
+      },
+      unwrapData: true,
+    }),
+
+  commitCourseVideo: (params: {
+    lessonId: string;
+    storagePath: string;
+    durationSeconds: number;
+    sizeBytes: number;
+  }) =>
+    adminFetch<{
+      lesson_id: string;
+      storage_path: string;
+      duration_seconds: number;
+      size_bytes: number;
+      poster_path: null;
+    }>('POST', 'admin-dashboard/commit-course-video', {
+      body: {
+        lesson_id: params.lessonId,
+        storage_path: params.storagePath,
+        duration_seconds: params.durationSeconds,
+        size_bytes: params.sizeBytes,
+      },
+      unwrapData: true,
+    }),
   // Overview
   getOverview: (params: { month?: number; year?: number; currency?: Currency }) =>
     adminFetch<OverviewData>('GET', 'admin-dashboard/overview', {

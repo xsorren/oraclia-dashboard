@@ -20,6 +20,7 @@ export const SERVICE_KIND_NAMES: Record<string, string> = {
   registros_akashicos: 'Registros Akáshicos',
   sesion_numerologia: 'Sesión de Numerología',
   analisis_suenos: 'Análisis de Sueños',
+  curso_tarot: 'Curso de Tarot',
 };
 
 // Emojis for visual identification
@@ -39,6 +40,7 @@ export const SERVICE_KIND_EMOJIS: Record<string, string> = {
   registros_akashicos: '📜',
   sesion_numerologia: '🔢',
   analisis_suenos: '🌙',
+  curso_tarot: '✦',
 };
 
 // Category groupings for services

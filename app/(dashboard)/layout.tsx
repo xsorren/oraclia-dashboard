@@ -11,15 +11,15 @@ export default async function DashboardRootLayout({
   const supabase = await createServerSupabaseClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect('/login');
   }
 
   // Verify allowlist
-  if (session.user.email !== ALLOWED_ADMIN_EMAIL) {
+  if (user.email !== ALLOWED_ADMIN_EMAIL) {
     redirect('/unauthorized');
   }
 
