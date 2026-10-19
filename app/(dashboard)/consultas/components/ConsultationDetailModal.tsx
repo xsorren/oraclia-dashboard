@@ -4,8 +4,9 @@ import { SignedAvatar } from '@/components/common/SignedAvatar';
 import { useConsultationDetail } from '@/lib/hooks/useConsultas';
 import { formatDateTime } from '@/lib/utils/dates';
 import { SERVICE_KIND_NAMES } from '@/lib/utils/services';
-import { CheckCircle2, RefreshCw, RotateCcw, User, X } from 'lucide-react';
+import { CheckCircle2, RefreshCw, RotateCcw, Shuffle, User, X } from 'lucide-react';
 import type { CancelPrivateConsultationTarget } from './CancelPrivateConsultationModal';
+import type { ReassignConsultationTarget } from './ReassignConsultationModal';
 import type { ResetPrivateConsultationTarget } from './ResetPrivateConsultationModal';
 
 interface Props {
@@ -18,9 +19,11 @@ interface Props {
     onRequestCancel?: (target: CancelPrivateConsultationTarget) => void;
     /** Abre el modal de reapertura (mismo motivo que onRequestCancel). */
     onRequestReset?: (target: ResetPrivateConsultationTarget) => void;
+    /** Abre el modal para derivar la consulta a otra tarotista. */
+    onRequestReassign?: (target: ReassignConsultationTarget) => void;
 }
 
-export function ConsultationDetailModal({ consultationId, onClose, onRequestCancel, onRequestReset }: Props) {
+export function ConsultationDetailModal({ consultationId, onClose, onRequestCancel, onRequestReset, onRequestReassign }: Props) {
     const { data: detailData, isLoading } = useConsultationDetail(consultationId);
 
     return (
@@ -53,6 +56,18 @@ export function ConsultationDetailModal({ consultationId, onClose, onRequestCanc
                             messages.some((m) => m.is_reader)
                             || ['answered', 'closed', 'expired'].includes(session.status)
                         );
+                        // Derivar solo si sigue sin respuesta (open/claimed/expired).
+                        const canReassign = ['open', 'claimed', 'expired'].includes(session.status)
+                            && !messages.some((m) => m.is_reader);
+                        const reassignTarget: ReassignConsultationTarget = {
+                            kind: 'private',
+                            id: session.id,
+                            status: session.status,
+                            serviceLabel: actionTarget.serviceLabel,
+                            clientName: actionTarget.clientName,
+                            currentReaderId: session.reader?.id ?? null,
+                            currentReaderName: actionTarget.readerName,
+                        };
                         return (
                             <>
                                 <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
@@ -162,6 +177,16 @@ export function ConsultationDetailModal({ consultationId, onClose, onRequestCanc
                                             >
                                                 <RefreshCw className="w-3.5 h-3.5" />
                                                 Reabrir consulta
+                                            </button>
+                                        )}
+                                        {onRequestReassign && canReassign && (
+                                            <button
+                                                onClick={() => onRequestReassign(reassignTarget)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 border border-purple-500/20 rounded-lg transition text-xs font-medium"
+                                                title="Derivar la consulta a otra tarotista (sin cancelar ni devolver crédito)"
+                                            >
+                                                <Shuffle className="w-3.5 h-3.5" />
+                                                Derivar a otra tarotista
                                             </button>
                                         )}
                                         {onRequestCancel && session.status !== 'cancelled' && (

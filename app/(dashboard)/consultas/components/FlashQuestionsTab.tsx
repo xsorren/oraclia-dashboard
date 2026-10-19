@@ -24,11 +24,13 @@ import {
     RotateCcw,
     Search,
     Send,
+    Shuffle,
     User,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { OwnerAnswerModal } from './OwnerAnswerModal';
+import { ReassignConsultationModal, type ReassignConsultationTarget } from './ReassignConsultationModal';
 
 const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
     open: { label: 'Abierta', icon: Clock, color: 'bg-green-500/10 text-green-500 border-green-500/20' },
@@ -47,6 +49,18 @@ export function FlashQuestionsTab() {
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [questionToReset, setQuestionToReset] = useState<string | null>(null);
     const [questionToAnswer, setQuestionToAnswer] = useState<FlashQuestion | null>(null);
+    const [questionToReassign, setQuestionToReassign] = useState<ReassignConsultationTarget | null>(null);
+
+    // Derivar solo tiene sentido mientras la pregunta no tenga respuesta.
+    const isReassignable = (question: FlashQuestion) => ['open', 'claimed', 'expired'].includes(question.status);
+    const toReassignTarget = (question: FlashQuestion): ReassignConsultationTarget => ({
+        kind: 'flash',
+        id: question.id,
+        status: question.status,
+        serviceLabel: 'Pregunta Flash',
+        clientName: question.user?.display_name || 'el cliente',
+        currentReaderName: question.answer?.reader_name ?? null,
+    });
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
     const handleClientClick = (clientId: string | null | undefined) => {
@@ -220,6 +234,15 @@ export function FlashQuestionsTab() {
                                                         Responder
                                                     </button>
                                                 )}
+                                                {isReassignable(question) && (
+                                                    <button
+                                                        onClick={() => setQuestionToReassign(toReassignTarget(question))}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition text-sm"
+                                                    >
+                                                        <Shuffle className="w-4 h-4" />
+                                                        Derivar
+                                                    </button>
+                                                )}
                                                 {question.status !== 'open' && (
                                                     <button
                                                         onClick={() => setQuestionToReset(question.id)}
@@ -321,6 +344,16 @@ export function FlashQuestionsTab() {
                                                             Responder
                                                         </button>
                                                     )}
+                                                    {isReassignable(question) && (
+                                                        <button
+                                                            onClick={() => setQuestionToReassign(toReassignTarget(question))}
+                                                            className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
+                                                            title="Derivar a otra tarotista"
+                                                            aria-label="Derivar pregunta a otra tarotista"
+                                                        >
+                                                            <Shuffle className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     {question.status !== 'open' && (
                                                         <button
                                                             onClick={() => setQuestionToReset(question.id)}
@@ -384,6 +417,13 @@ export function FlashQuestionsTab() {
                 <OwnerAnswerModal
                     question={questionToAnswer}
                     onClose={() => setQuestionToAnswer(null)}
+                />
+            )}
+
+            {questionToReassign && (
+                <ReassignConsultationModal
+                    target={questionToReassign}
+                    onClose={() => setQuestionToReassign(null)}
                 />
             )}
 

@@ -436,6 +436,35 @@ export interface ResetPrivateConsultationResult {
 
 
 
+/**
+ * Resultado de derivar una consulta (privada o flash) a OTRA tarotista. No
+ * mueve créditos. En privadas `status` queda 'claimed'; en flash también.
+ */
+export interface ReassignConsultationResult {
+  success: boolean;
+  message: string;
+  data: {
+    session_id?: string;
+    question_id?: string;
+    status: string;
+    previous_status?: string;
+    previous_reader_id: string | null;
+    new_reader_id: string;
+    new_reader_name: string | null;
+    reader_notified: boolean;
+    client_notified?: boolean;
+    ledger_id?: string | null;
+  };
+}
+
+export interface ReassignConsultationParams {
+  readerId: string;
+  notifyReader?: boolean;
+  notifyClient?: boolean;
+  reason?: string;
+  notes?: string;
+}
+
 export interface TarotistaDetailData {
   id: string;
   full_name: string;
@@ -1060,6 +1089,58 @@ export const adminApi = {
 
     if (!response.ok) {
       throw parseErrorEnvelope(await response.text(), response.status, 'Error al reabrir la consulta');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Deriva una consulta privada SIN respuesta a otra tarotista (la clienta no
+   * pierde la consulta ni el crédito). Lanza `AdminApiError` con `code`
+   * `ALREADY_ANSWERED` / `SAME_READER` / `READER_INACTIVE` según el caso.
+   */
+  async reassignPrivateConsultation(
+    params: ReassignConsultationParams & { sessionId: string },
+  ): Promise<ReassignConsultationResult> {
+    const token = await getAuthToken();
+    const { sessionId, ...body } = params;
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/private-consultations/${sessionId}/reassign`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notifyReader: true,
+          notifyClient: true,
+          ...body,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw parseErrorEnvelope(await response.text(), response.status, 'Error al reasignar la consulta');
+    }
+
+    return response.json();
+  },
+
+  /** Deriva una pregunta flash (abierta o reclamada) a una tarotista concreta. */
+  async reassignFlashQuestion(
+    params: ReassignConsultationParams & { questionId: string },
+  ): Promise<ReassignConsultationResult> {
+    const token = await getAuthToken();
+    const { questionId, ...body } = params;
+    const response = await fetch(
+      `${EDGE_FUNCTIONS_URL}/admin-dashboard/flash-questions/${questionId}/reassign`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notifyReader: true, ...body }),
+      },
+    );
+
+    if (!response.ok) {
+      throw parseErrorEnvelope(await response.text(), response.status, 'Error al reasignar la pregunta');
     }
 
     return response.json();

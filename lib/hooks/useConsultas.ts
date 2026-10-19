@@ -1,4 +1,4 @@
-import { adminApi } from '@/lib/api/admin';
+import { adminApi, type ReassignConsultationParams } from '@/lib/api/admin';
 import { STALE_TIMES } from '@/lib/constants';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -226,6 +226,39 @@ export function useResetPrivateConsultation() {
         queryKey: consultaKeys.consultationDetail(variables.sessionId),
       });
       queryClient.invalidateQueries({ queryKey: ['admin', 'client-detail'] });
+    },
+  });
+}
+
+/**
+ * Deriva una consulta privada a otra tarotista. No mueve créditos: alcanza con
+ * refrescar la lista y el detalle.
+ */
+export function useReassignPrivateConsultation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ReassignConsultationParams & { sessionId: string }) =>
+      adminApi.reassignPrivateConsultation(params),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'private-consultations'] });
+      queryClient.invalidateQueries({
+        queryKey: consultaKeys.consultationDetail(variables.sessionId),
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'client-detail'] });
+    },
+  });
+}
+
+/** Deriva una pregunta flash a una tarotista concreta. */
+export function useReassignFlashQuestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ReassignConsultationParams & { questionId: string }) =>
+      adminApi.reassignFlashQuestion(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'flash-questions'] });
     },
   });
 }

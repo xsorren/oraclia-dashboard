@@ -19,12 +19,15 @@ import {
     MessageSquare,
     RefreshCw,
     RotateCcw,
+    Shuffle,
     User,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { CancelPrivateConsultationModal, type CancelPrivateConsultationTarget } from './CancelPrivateConsultationModal';
 import { ConsultationDetailModal } from './ConsultationDetailModal';
+import { ReassignConsultationModal, type ReassignConsultationTarget } from './ReassignConsultationModal';
+import { isReassignable, toReassignTarget } from './reassign';
 import { ResetPrivateConsultationModal, type ResetPrivateConsultationTarget } from './ResetPrivateConsultationModal';
 
 const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
@@ -89,6 +92,7 @@ export function PrivateConsultationsTab() {
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [consultationToCancel, setConsultationToCancel] = useState<CancelPrivateConsultationTarget | null>(null);
     const [consultationToReset, setConsultationToReset] = useState<ResetPrivateConsultationTarget | null>(null);
+    const [consultationToReassign, setConsultationToReassign] = useState<ReassignConsultationTarget | null>(null);
 
     const { data, isLoading } = usePrivateConsultations({ page, limit: 15, search: '', status, serviceKind });
 
@@ -103,6 +107,13 @@ export function PrivateConsultationsTab() {
     const handleCancelClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
         e.stopPropagation();
         setConsultationToCancel(toActionTarget(consultation));
+    };
+
+    const handleReassignClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
+        e.stopPropagation();
+        setConsultationToReassign(
+            toReassignTarget(consultation, serviceKinds[consultation.service_kind] || consultation.service_kind),
+        );
     };
 
     const handleResetClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
@@ -222,7 +233,7 @@ export function PrivateConsultationsTab() {
                                                 {consultation.message_count} {consultation.message_count === 1 ? 'mensaje' : 'mensajes'}
                                             </div>
 
-                                            {(isCancellable(consultation.status) || isResettable(consultation)) && (
+                                            {(isCancellable(consultation.status) || isResettable(consultation) || isReassignable(consultation)) && (
                                                 <MobileCardActions>
                                                     {isResettable(consultation) && (
                                                         <button
@@ -231,6 +242,15 @@ export function PrivateConsultationsTab() {
                                                         >
                                                             <RefreshCw className="w-4 h-4" />
                                                             Reabrir
+                                                        </button>
+                                                    )}
+                                                    {isReassignable(consultation) && (
+                                                        <button
+                                                            onClick={(e) => handleReassignClick(e, consultation)}
+                                                            className="flex-1 flex items-center justify-center gap-2 py-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition text-sm font-medium"
+                                                        >
+                                                            <Shuffle className="w-4 h-4" />
+                                                            Derivar
                                                         </button>
                                                     )}
                                                     {isCancellable(consultation.status) && (
@@ -336,6 +356,16 @@ export function PrivateConsultationsTab() {
                                                             Reabrir
                                                         </button>
                                                     )}
+                                                    {isReassignable(consultation) && (
+                                                        <button
+                                                            onClick={(e) => handleReassignClick(e, consultation)}
+                                                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition text-xs font-medium whitespace-nowrap"
+                                                            title="Derivar la consulta a otra tarotista (sin cancelar ni devolver crédito)"
+                                                        >
+                                                            <Shuffle className="w-3.5 h-3.5" />
+                                                            Derivar
+                                                        </button>
+                                                    )}
                                                     {isCancellable(consultation.status) && (
                                                         <button
                                                             onClick={(e) => handleCancelClick(e, consultation)}
@@ -374,6 +404,7 @@ export function PrivateConsultationsTab() {
                     onClose={() => setSelectedConsultationId(null)}
                     onRequestCancel={setConsultationToCancel}
                     onRequestReset={setConsultationToReset}
+                    onRequestReassign={setConsultationToReassign}
                 />
             )}
 
@@ -390,6 +421,14 @@ export function PrivateConsultationsTab() {
                     consultation={consultationToReset}
                     onClose={() => setConsultationToReset(null)}
                     onReset={() => setSelectedConsultationId(null)}
+                />
+            )}
+
+            {consultationToReassign && (
+                <ReassignConsultationModal
+                    target={consultationToReassign}
+                    onClose={() => setConsultationToReassign(null)}
+                    onReassigned={() => setSelectedConsultationId(null)}
                 />
             )}
 

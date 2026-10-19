@@ -25,11 +25,14 @@ import {
     RefreshCw,
     RotateCcw,
     Search,
+    Shuffle,
     User,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { CancelPrivateConsultationModal, type CancelPrivateConsultationTarget } from '../components/CancelPrivateConsultationModal';
+import { ReassignConsultationModal, type ReassignConsultationTarget } from '../components/ReassignConsultationModal';
+import { isReassignable, toReassignTarget } from '../components/reassign';
 import { ResetPrivateConsultationModal, type ResetPrivateConsultationTarget } from '../components/ResetPrivateConsultationModal';
 
 const statusConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
@@ -95,6 +98,7 @@ export default function ConsultasPrivadasPage() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [consultationToCancel, setConsultationToCancel] = useState<ConsultationActionTarget | null>(null);
   const [consultationToReset, setConsultationToReset] = useState<ConsultationActionTarget | null>(null);
+  const [consultationToReassign, setConsultationToReassign] = useState<ReassignConsultationTarget | null>(null);
 
   // const { toast } = useToast();
 
@@ -118,6 +122,11 @@ export default function ConsultasPrivadasPage() {
   const handleResetClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
     e.stopPropagation();
     setConsultationToReset(toActionTarget(consultation));
+  };
+
+  const handleReassignClick = (e: React.MouseEvent, consultation: PrivateConsultation) => {
+    e.stopPropagation();
+    setConsultationToReassign(toReassignTarget(consultation, getServiceName(consultation.service_kind)));
   };
 
   // Query for details when selected
@@ -279,7 +288,7 @@ export default function ConsultasPrivadasPage() {
                                             value={`${consultation.message_count} msgs`} 
                                         />
 
-                                        {(isResettable(consultation) || isCancellable(consultation.status)) && (
+                                        {(isResettable(consultation) || isCancellable(consultation.status) || isReassignable(consultation)) && (
                                             <MobileCardActions>
                                                 {isResettable(consultation) && (
                                                     <button
@@ -288,6 +297,15 @@ export default function ConsultasPrivadasPage() {
                                                     >
                                                         <RefreshCw className="w-4 h-4" />
                                                         Reabrir
+                                                    </button>
+                                                )}
+                                                {isReassignable(consultation) && (
+                                                    <button
+                                                        onClick={(e) => handleReassignClick(e, consultation)}
+                                                        className="flex-1 flex items-center justify-center gap-2 py-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition text-sm font-medium"
+                                                    >
+                                                        <Shuffle className="w-4 h-4" />
+                                                        Derivar
                                                     </button>
                                                 )}
                                                 {isCancellable(consultation.status) && (
@@ -415,6 +433,16 @@ export default function ConsultasPrivadasPage() {
                                                     <RefreshCw className="w-4 h-4" />
                                                 </button>
                                             )}
+                                            {isReassignable(consultation) && (
+                                                <button
+                                                    onClick={(e) => handleReassignClick(e, consultation)}
+                                                    className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition"
+                                                    title="Derivar la consulta a otra tarotista (sin cancelar ni devolver crédito)"
+                                                    aria-label="Derivar consulta a otra tarotista"
+                                                >
+                                                    <Shuffle className="w-4 h-4" />
+                                                </button>
+                                            )}
                                             {isCancellable(consultation.status) && (
                                                 <button
                                                     onClick={(e) => handleCancelClick(e, consultation)}
@@ -520,7 +548,9 @@ export default function ConsultasPrivadasPage() {
                         detailData.data.messages.some((m) => m.is_reader)
                         || ['answered', 'closed', 'expired'].includes(session.status)
                     );
-                    if (!canReset && !isCancellable(session.status)) return null;
+                    const canReassign = ['open', 'claimed', 'expired'].includes(session.status)
+                        && !detailData.data.messages.some((m) => m.is_reader);
+                    if (!canReset && !canReassign && !isCancellable(session.status)) return null;
 
                     return (
                         <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-800">
@@ -532,6 +562,16 @@ export default function ConsultasPrivadasPage() {
                                 >
                                     <RefreshCw className="w-4 h-4" />
                                     Reabrir consulta
+                                </button>
+                            )}
+                            {canReassign && (
+                                <button
+                                    onClick={() => setConsultationToReassign(toReassignTarget(session, getServiceName(session.service_kind)))}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 border border-purple-500/20 rounded-xl transition text-sm font-medium"
+                                    title="Derivar la consulta a otra tarotista (sin cancelar ni devolver crédito)"
+                                >
+                                    <Shuffle className="w-4 h-4" />
+                                    Derivar a otra tarotista
                                 </button>
                             )}
                             {isCancellable(session.status) && (
@@ -566,6 +606,14 @@ export default function ConsultasPrivadasPage() {
           consultation={consultationToReset}
           onClose={() => setConsultationToReset(null)}
           onReset={() => setSelectedConsultation(null)}
+        />
+      )}
+
+      {consultationToReassign && (
+        <ReassignConsultationModal
+          target={consultationToReassign}
+          onClose={() => setConsultationToReassign(null)}
+          onReassigned={() => setSelectedConsultation(null)}
         />
       )}
 
